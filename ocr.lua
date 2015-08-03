@@ -1,7 +1,8 @@
 require 'nn'
+
+require 'cutorch'
+require 'cunn'
 require 'rnn'
-require 'cltorch'
-require 'clnn'
 
 require 'image'
 
@@ -18,17 +19,14 @@ local class_num = 10
 
 local net = nn.Sequential()
 
-im = im:cl()
+im = im:float():cuda()
 
 net:add(nn.SplitTable(1))
 net:add(nn.BiSequencer(nn.LSTM(input_size, hidden_size)))
 output = nn.Sequential()
 output:add(nn.Linear(hidden_size * 2, class_num + 1))
 output:add(nn.SoftMax())
-output:cl()
 net:add(nn.Sequencer(output))
+net:cuda()
 
 print(net:forward(im))
-
-
-
