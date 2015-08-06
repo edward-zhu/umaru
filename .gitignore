@@ -1,6 +1,8 @@
 1/*
 samples/*
 
+.DS_Store
+
 # Compiled Lua sources
 luac.out
 
