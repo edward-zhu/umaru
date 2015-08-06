@@ -37,6 +37,8 @@ net:add(nn.Sequencer(output))
 
 outputTable = net:forward(im)
 
+
+
 ctc.getCTCCostAndGrad(outputTable, target)
 
 

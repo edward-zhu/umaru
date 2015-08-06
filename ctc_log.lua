@@ -32,11 +32,21 @@ end
 	return a 2L + 1 vector of number of class.
 ]]
 
-function ctc.__getFilledTarget(target)
+function ctc.__getFilledTargetFromString(target)
 	local filled = torch.zeros(#target * 2 + 1)
 	for i = 1, (#filled)[1] do
 		if i % 2 == 0 then
 			filled[i] = string.sub(target, i / 2, i / 2)
+		end
+	end
+	return filled
+end
+
+function ctc.__getFilledTarget(target)
+	local filled = torch.zeros((#target)[1] * 2 + 1)
+	for i = 1, (#filled)[1] do
+		if i % 2 == 0 then
+			filled[i] = target[i / 2]
 		end
 	end
 	return filled
@@ -72,6 +82,7 @@ function ctc.__getForwardVariable(outputTable, alignedTable, target)
 	fvs[1][1] = alignedTable[1][1]
 	fvs[1][2] = alignedTable[1][2]
 	
+	local lower_bound = 0
 	local upper_bound = 2
 
 	-- calculate
@@ -80,9 +91,12 @@ function ctc.__getForwardVariable(outputTable, alignedTable, target)
 		if upper_bound > L then
 			upper_bound = L
 		end
-		for u = 1, upper_bound do
-		
-			-- if l'[u] is not blank
+		lower_bound = L - 2 * (T - i) - 1
+		if lower_bound < 1 then
+			lower_bound = 1
+		end
+		for u = lower_bound, upper_bound do
+			-- if l'[u] is blank
 		
 			if u % 2 == 1 then
 				fvs[i][u] = logs.log_add(fvs[i][u], fvs[i - 1][u])
@@ -115,18 +129,30 @@ function ctc.__getBackwardVariable(outputTable, alignedTable, target)
 	
 	-- calculate using dynamic programming
 	
+	local upper_bound = L - 2
+	local lower_bound
+	
 	for i = T - 1, 1, -1 do
-		for u = L, 1, -1 do
-			if i % 2 == 1 then
+		upper_bound = upper_bound - 2
+		if upper_bound < 1 then
+			upper_bound = 1
+		end
+		
+		lower_bound = 2 * i
+		if lower_bound > L - 1 then
+			lower_bound = L - 1
+		end
+		
+		print(lower_bound, upper_bound)
+		
+		for u = lower_bound, upper_bound, -1 do
+			
+			if u % 2 == 1 then
 				bvs[i][u] = logs.log_mul(alignedTable[i + 1][u], bvs[i + 1][u])
-				if u < L then 
-					bvs[i][u] = logs.log_add(bvs[i][u], logs.log_mul(alignedTable[i + 1][u + 1], bvs[i + 1][u + 1])) 
-				end
+				bvs[i][u] = logs.log_add(bvs[i][u], logs.log_mul(alignedTable[i + 1][u + 1], bvs[i + 1][u + 1])) 
 			else
-				bvs[i][u] = logs.log_mul(alignedTable[i + 1][u], bvs[i + 1][u])
-				if u < L then 
-					bvs[i][u] = logs.log_add(bvs[i][u], logs.log_mul(alignedTable[i + 1][u + 1], bvs[i + 1][u + 1])) 
-				end
+				bvs[i][u] = logs.log_mul(alignedTable[i + 1][u], bvs[i + 1][u]) 
+				bvs[i][u] = logs.log_add(bvs[i][u], logs.log_mul(alignedTable[i + 1][u + 1], bvs[i + 1][u + 1])) 
 				if u < L - 1 and target[u + 2] ~= target[u] then
 					bvs[i][u] = logs.log_add(bvs[i][u], logs.log_mul(alignedTable[i + 1][u + 2], bvs[i + 1][u + 2]))
 				end
@@ -146,7 +172,7 @@ function ctc.__getGrad(fb, pzx, class_num, outputTable, target)
 	local u = 0
 	for t = 1, T do
 		for k = 1, class_num do
-			temp_sum = 0
+			temp_sum = logs.LOG_ZERO
 			grad[t][k] = logs.log_mul(-pzx, -outputTable[t][k])
 			u = k
 			
@@ -178,7 +204,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	local T = #outputTable
 	
 	
-	targetClasses = ctc.__getFilledTarget(target)
+	targetClasses = ctc.__getFilledTargetFromString(target)
 	targetMatrix = ctc.__getOnehotMatrix(targetClasses, class_num)
 
 	outputTable = ctc.__toMatrix(outputTable)
@@ -190,20 +216,19 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	local alignedTable = outputTable * targetMatrix:t()
 
 	-- calculate forwardVariable (in log space)
-	fb = ctc.__getForwardVariable(outputTable, alignedTable, targetMatrix)
+	local fvs = ctc.__getForwardVariable(outputTable, alignedTable, targetMatrix)
 	
-	
-	local L_1 = #target * 2 + 1
+	local L_1 = (#targetClasses)[1]
 	
 	-- calculate log(p(z|x))
-	pzx = logs.log_sum(fb[T][L_1], fb[T][L_1-1])
+	local pzx = logs.log_sum(fvs[T][L_1], fvs[T][L_1-1])
 	
 	-- calculate backwardVariable (in log space)
-	fb = fb + ctc.__getBackwardVariable(outputTable, alignedTable, targetMatrix)
+	local bvs= ctc.__getBackwardVariable(outputTable, alignedTable, targetMatrix)
+	
+	local fb = fvs + bvs
 	
 	-- calculate gradient matrix (Tx(cls+1))
 	local grad = ctc.__getGrad(fb, pzx, class_num, outputTable, targetClasses)
-	
-	print(grad)
 	
 end
