@@ -20,7 +20,7 @@ outputTable = torch.Tensor{
 
 target = torch.Tensor{4, 3, 13, 1, 10, 7}
 
-outputTable = nn.Log():forward(outputTable:t())
+-- outputTable = nn.Log():forward(outputTable:t())
+outputTable = nn.SplitTable(1):forward(outputTable:t())
 
-
-ctc.getCTCCostAndGrad(outputTable, target)
+pzx, grad = ctc.getCTCCostAndGrad(outputTable, target)

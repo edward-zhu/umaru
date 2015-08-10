@@ -36,7 +36,7 @@ function ctc.__getFilledTargetFromString(target)
 	local filled = torch.zeros(#target * 2 + 1)
 	for i = 1, (#filled)[1] do
 		if i % 2 == 0 then
-			filled[i] = string.sub(target, i / 2, i / 2)
+			filled[i] = string.sub(target, i / 2, i / 2) + 1
 		end
 	end
 	return filled
@@ -52,10 +52,10 @@ function ctc.__getFilledTarget(target)
 	return filled
 end
 
-function ctc.__toMatrix(outputTable)
+function ctc.__toMatrix(outputTable, class_num)
 	local net = nn.Sequential()
 	net:add(nn.JoinTable(1))
-	net:add(nn.Reshape(#outputTable, 11))
+	net:add(nn.Reshape(#outputTable, class_num))
 	return net:forward(outputTable)
 end
 
@@ -143,7 +143,7 @@ function ctc.__getBackwardVariable(outputTable, alignedTable, target)
 			lower_bound = L - 1
 		end
 		
-		print(lower_bound, upper_bound)
+		-- print(lower_bound, upper_bound)
 		
 		for u = lower_bound, upper_bound, -1 do
 			
@@ -204,11 +204,23 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	local T = #outputTable
 	
 	
-	targetClasses = ctc.__getFilledTargetFromString(target)
+	targetClasses = ctc.__getFilledTarget(target)
 	targetMatrix = ctc.__getOnehotMatrix(targetClasses, class_num)
 
-	outputTable = ctc.__toMatrix(outputTable)
-
+	
+	
+	outputTable = ctc.__toMatrix(outputTable, class_num)
+	
+	print(outputTable)
+	
+	for i = 1, (#outputTable)[1] do
+		for j = 1, (#outputTable)[2] do
+			outputTable[i][j] = logs.safe_log(outputTable[i][j])
+		end
+	end
+	
+	
+	
 	-- get aligned_table
 		-- outputTable: Tx(cls+1)
 		-- target: L'x(cls+1) --> targetT : (cls+1)xL'
@@ -221,14 +233,22 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	local L_1 = (#targetClasses)[1]
 	
 	-- calculate log(p(z|x))
-	local pzx = logs.log_sum(fvs[T][L_1], fvs[T][L_1-1])
+	local pzx = logs.log_add(fvs[T][L_1], fvs[T][L_1-1])
 	
 	-- calculate backwardVariable (in log space)
 	local bvs= ctc.__getBackwardVariable(outputTable, alignedTable, targetMatrix)
 	
 	local fb = fvs + bvs
 	
+	
+	
 	-- calculate gradient matrix (Tx(cls+1))
 	local grad = ctc.__getGrad(fb, pzx, class_num, outputTable, targetClasses)
+	
+	
+	-- print(grad)
+	grad = nn.SplitTable(1):forward(grad)
+	
+	return -pzx, grad
 	
 end

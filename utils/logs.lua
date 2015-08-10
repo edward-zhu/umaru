@@ -22,7 +22,7 @@ function logs.safe_exp(x)
 		return 0
 	end
 	if x >= logs.EXP_LIMIT then
-		return EXP_MAX
+		return logs.EXP_MAX
 	end
 	return math.exp(x)
 end
