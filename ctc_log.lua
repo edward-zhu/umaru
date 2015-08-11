@@ -8,7 +8,7 @@ ctc = {}
 
 	target -  a vector of number of class
 
-	return a L * C onehot Matrix, C is the number of kinds of classes.
+	return a (2L + 1) * C onehot Matrix, C is the number of kinds of classes.
 ]]
 
 function ctc.__getOnehotMatrix(target, class_num)
@@ -211,7 +211,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	
 	outputTable = ctc.__toMatrix(outputTable, class_num)
 	
-	print(outputTable)
+	-- print(outputTable)
 	
 	for i = 1, (#outputTable)[1] do
 		for j = 1, (#outputTable)[2] do
@@ -240,8 +240,6 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	
 	local fb = fvs + bvs
 	
-	
-	
 	-- calculate gradient matrix (Tx(cls+1))
 	local grad = ctc.__getGrad(fb, pzx, class_num, outputTable, targetClasses)
 	
@@ -251,4 +249,8 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	
 	return -pzx, grad
 	
+end
+
+function ctc.test()
+	return gpu
 end

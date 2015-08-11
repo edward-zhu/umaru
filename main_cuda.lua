@@ -1,5 +1,5 @@
 require 'nn'
-require 'cunn'
+require 'cnn'
 require 'rnn'
 require 'image'
 
@@ -28,6 +28,8 @@ output:add(nn.Linear(hidden_size * 2, class_num + 1))
 output:add(nn.SoftMax())
 net:add(nn.Sequencer(output))
 
+net:cuda()
+
 -- net:remember('both')
 
 torch.manualSeed(450)
@@ -37,8 +39,8 @@ params, grad_params = net:getParameters()
 for i = 1, 100000 do
 	local no = torch.random() % 10 + 1
 	local sample = mnist.traindataset()[no]
-	local im = sample.x:double():t()
-	local target = torch.Tensor{sample.y + 1}
+	local im = sample.x:double():t():cuda()
+	local target = torch.Tensor{sample.y + 1}:cuda()
 	
 	
 	local result = torch.zeros(im:size()[2])
