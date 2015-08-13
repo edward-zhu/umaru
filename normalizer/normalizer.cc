@@ -98,39 +98,7 @@ static void gauss2d(double * src, long w, long h, double sigmaX, double sigmaY) 
 	delete [] maskY;
 }
 
-/*
-function bilinear(input, x, y)
-	local w = input:size()[2]
-	local h = input:size()[1]
-	local xi = math.floor(x)
-	local yi = math.floor(y)
-	local xf = x - xi
-	local yf = y - yi
-	
-	local p00, p01, p10, p11
-	
-	xi = xi < 1 and 1 or xi
-	yi = yi < 1 and 1 or yi 
-	local xt = xi + 1
-	local yt = yi + 1
-	
-	xi = xi > w and w or xi
-	yi = yi > h and h or yi
-	xt = xt > w and w or xt
-	yt = yt > h and h or yt
-	
-	-- print(xi, yi, xt, yt, w, h)
-	
-	p00 = input[yi][xi]
-	p01 = input[yt][xi]
-	p10 = input[yi][xt]
-	p11 = input[yt][xt]
-	
-	local output = p00 * (1 - xf) * (1 - yf) + p10 * xf * (1 - yf) + p01 * (1 - xf) * yf + p11 * xf * yf
-	
-	return output
-end
-*/
+
 
 static double bilinear(double * in, int w, int h, double x, double y) {
 	int xi = int(x), yi = int(y), xt = xi + 1, yt = yi + 1;
