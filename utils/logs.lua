@@ -28,12 +28,11 @@ function logs.safe_exp(x)
 end
 
 function logs.log_add(x, y)
-	if x == logs.LOG_ZERO then
-		return y
+	
+	if math.abs(x - y) > 10 then
+		return math.max(x, y)
 	end
-	if y == logs.LOG_ZERO then
-		return x
-	end
+	
 	if x < y then
 		return y + math.log(1.0 + logs.safe_exp(x - y))
 	else

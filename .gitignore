@@ -1,8 +1,10 @@
 1/*
 samples/*
 *.png
+*.tif
 
 .DS_Store
+*.dSYM
 
 # Compiled Lua sources
 luac.out

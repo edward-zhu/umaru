@@ -234,6 +234,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	
 	-- calculate log(p(z|x))
 	local pzx = logs.log_add(fvs[T][L_1], fvs[T][L_1-1])
+
 	
 	-- calculate backwardVariable (in log space)
 	local bvs= ctc.__getBackwardVariable(outputTable, alignedTable, targetMatrix)
