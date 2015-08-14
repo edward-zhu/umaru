@@ -3,13 +3,21 @@ require 'loader'
 l = Loader()
 l:load("1.txt")
 
-codec = l:codec()
+INIT_LAMBDA = 3.0
 
-str = codec:encode("雪之下")
+function getLambda(i, total)
+	return (1 - i / total) * INIT_LAMBDA 
+end
 
-print(str)
+lambda = 3.0
 
-str = codec:decode({1, 2, 3})
-
-print(str)
+for i = 1, 100 do
+	print(l:pickWithWeight())
+	
+	if i % 10 == 0 then
+		lambda = getLambda(i, 100)
+		print(">>> updated lambda = " .. lambda)
+		l:updateWeight(lambda)
+	end
+end
 

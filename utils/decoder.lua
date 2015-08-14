@@ -1,31 +1,30 @@
 decoder = {}
 
-function decoder.decode(x)
-	local res = ""
-	last = -1
-	for i = 1, (#x)[1] do
-		if x[i] ~= last then
-			res = res .. " " .. x[i]
-			last = x[i]
-		end
-	end
-	return res
-end
-
-function decoder.decodeTable(outputTable)
-	local result = torch.zeros(#outputTable)
+function decoder.best_path_decode(outputTable, codec)
+	local result = {}
+	
+	local class_num = #(outputTable[1])[1]
+	
+	local last_max_class = nil;
+	local last_max = -1;
 	
 	for i = 1, #outputTable do
-		max = -1e100
-		max_j = -1
-		for j = 1, (#(outputTable[1]))[1] do
-			if outputTable[i][j] > max then
-				max = outputTable[i][j]
-				max_j = j
+		local max_val, max = torch.max(outputTable[i], 1)
+		max = max[1]
+		
+		if max = class_num then
+			if last_max ~= -1 and last_max_class ~= nil then
+				table.insert(result, last_max_class)
+				last_max = -1
+				last_max_class = nil
+			end
+		else
+			if max_val > last_max then
+				last_max = max_val
+				last_max_class = max
 			end
 		end
-		result[i] = max_j - 1
 	end
 	
-	return decoder.decode(result)
+	return codec:decode(result)
 end

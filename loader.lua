@@ -3,10 +3,14 @@ utf8 = require 'utf8'
 
 Loader = {
 	samples = {},
+	weights = nil,
+	p = nil,
 	codec_table = {},
 	codec_inv = {},
 	codec_size = 0,
-	codec_obj = nil
+	codec_obj = nil,
+	threshold = 3,
+	lambda = 3.0
 }
 
 setmetatable(Loader, {
@@ -49,12 +53,42 @@ function Loader:load(file)
 		self.codec_inv[v] = k
 	end
 	
+	self.codec_obj = nil
+	self.weights = nil
+	
 	return self.samples
 end
 
 function Loader:pick()
 	local index = torch.random(#self.samples)
 	return self.samples[index]
+end
+
+function Loader:pickWithWeight()
+	if self.weights == nil then
+		self.weights = torch.zeros(#self.samples)
+		for i, v in ipairs(self.samples) do
+			self.weights[i] = math.pow(1.0 / math.max(utf8.len(v.gt), self.threshold), self.lambda)
+		end
+		self.weights = torch.div(self.weights, torch.sum(self.weights))
+		
+		self.p = torch.zeros(#self.samples)
+		local i = 0
+		self.p:apply(function() 
+			i = i + 1 
+			return torch.normal(1.0 / self.weights[i], 1.0 / self.weights[i] / 3.0) 
+		end)
+	end
+	local _, index = torch.min(self.p, 1)
+	index = index[1]
+	self.p[index] = torch.normal(1.0 / self.weights[index], 1.0 / self.weights[index] / 3.0) + 1
+	
+	return self.samples[index]
+end
+
+function Loader:updateWeight(lambda)
+	self.lambda = lambda
+	self.weights = nil
 end
 
 function Loader:codec()
