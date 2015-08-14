@@ -1,5 +1,9 @@
 1/*
 samples/*
+build/*
+ctc/*
+normalizer/*
+
 *.png
 *.tif
 
