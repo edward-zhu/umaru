@@ -3,6 +3,7 @@ require 'rnn'
 require 'image'
 require 'optim'
 
+require 'loader'
 require 'ctc_log'
 require 'utils/decoder'
 
@@ -10,7 +11,7 @@ mnist = require 'mnist'
 
 DROPOUT_RATE = 0.4
 
-local input_size = 28
+local input_size = 64
 local hidden_size = 100
 local class_num = 10
 
@@ -36,12 +37,27 @@ state = {
 	momentum = 0.5
 }
 
+loader = Loader()
+loader:load("1.txt")
+codec = loader:codec()
+
+local sample = loader:pick()
+local im = sample.img
+local target = codec:encode(sample.gt)
+
+raw = image.load(sample.src, 1)
+
+print(raw[1])
+
+print(im)
+
+--[[
 for i = 1, 100000 do
-	local no = torch.random() % 100 + 1
-	local sample = mnist.traindataset()[no]
-	local im = sample.x:double():t()
-	local target = torch.Tensor{sample.y + 1}
-	
+	local sample = loader:pick()
+	local im = sample.img
+	local target = codec:encode(sample.gt)
+
+	print(im)
 	
 	local feval = function(params)
 		net:forget()
@@ -51,8 +67,8 @@ for i = 1, 100000 do
 		loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
 	
 		if i % 20 == 0 then
-			print(target[1] - 1)
-			print(decoder.decodeTable(outputTable))
+			print(sample.gt)
+			print(decoder.best_path_decode(outputTable))
 			print(loss)
 		end
 	
@@ -67,3 +83,6 @@ for i = 1, 100000 do
 	
 	optim.sgd(feval, params, state)
 end
+
+
+]]

@@ -1,4 +1,6 @@
+require 'image'
 require 'codec'
+require 'normalizer'
 utf8 = require 'utf8'
 
 Loader = {
@@ -27,11 +29,34 @@ function Loader:new(o)
 	return o
 end
 
+function Loader.__getNormalizedImage(src)
+	local im = image.load(src, 1)
+
+	if im:dim() == 3 then
+		im = im[1]
+	end
+
+	output = torch.Tensor()
+
+	w = im:size()[2]
+	h = im:size()[1]
+
+	ones = torch.ones(h, w)
+
+	im = ones - im
+
+	normalizer.normalize(im, output)
+
+	return output
+end
+
 function Loader:load(file)
 	self.samples = {}
 	local f = assert(io.open(file, "r"))
 	for line in f:lines() do
 		local src = line
+		local im = Loader.__getNormalizedImage(src)
+		
 		local gt = src:gsub(".png", ".gt.txt")
 		local cf = assert(io.open(gt, "r"))
 		local gt = cf:read("*line")
@@ -45,7 +70,7 @@ function Loader:load(file)
 			
 		end
 		
-		table.insert(self.samples, {src = src, gt = gt})
+		table.insert(self.samples, {src = src, gt = gt, img = im})
 	end
 	f:close()
 	
@@ -56,7 +81,7 @@ function Loader:load(file)
 	self.codec_obj = nil
 	self.weights = nil
 	
-	return self.samples
+	-- return self.samples
 end
 
 function Loader:pick()
@@ -74,8 +99,8 @@ function Loader:pickWithWeight()
 		
 		self.p = torch.zeros(#self.samples)
 		local i = 0
-		self.p:apply(function() 
-			i = i + 1 
+		self.p:apply(function()
+			i = i + 1
 			return torch.normal(1.0 / self.weights[i], 1.0 / self.weights[i] / 3.0) 
 		end)
 	end

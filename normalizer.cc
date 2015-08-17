@@ -114,14 +114,14 @@ static double bilinear(double * in, int w, int h, double x, double y) {
 	xt = xt > w - 1 ? w - 1 : xt;
 	yt = yt > h - 1 ? h - 1 : yt;
 	
-	// printf("(%d, %d)\n", xi, yi);
+	printf("(%d, %d)\n", xi, yi);
 	
 	double p00 = in[yi * w + xi];
 	double p01 = in[yt * w + xi];
 	double p10 = in[yi * w + xt];
 	double p11 = in[yt * w + xt];
 	
-	return p00 * (1.0 - xf) * (1.0 - yf) + p10 * xf * (1.0 - yf) + p01 * (1.0 - xf) * yf + p11 * xf * yf;
+	p00 * (1.0 - xf) * (1.0 - yf) + p10 * xf * (1.0 - yf) + p01 * (1.0 - xf) * yf + p11 * xf * yf;
 	
 }
 
@@ -174,7 +174,7 @@ static void normalize
 	
 	THDoubleTensor_resize2d(out, target_height, target_width);
 	
-	printf("scale = %.4f\n", scale);
+	// printf("scale = %.4f\n", scale);
 	
 	double * outData = THDoubleTensor_data(out);
 	

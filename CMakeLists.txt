@@ -10,7 +10,7 @@ foreach(target ctc normalizer)
 	set_target_properties(${target}
 		PROPERTIES PREFIX ""
 		SUFFIX ".so"
-		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/../${target}"
+		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/../"
 	)
 	target_link_libraries(${target} TH luaT luajit)
 endforeach(target)

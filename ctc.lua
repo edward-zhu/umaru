@@ -150,7 +150,6 @@ function ctc.getCTCCost(outputTable, target)
 
 	fvs = ctc.getForwardVariable(outputTable, alignedTable, target)
 	
-
 	-- calculate backwardVariable
 
 	bvs = ctc.getBackwardVariable(outputTable, alignedTable, target)

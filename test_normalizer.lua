@@ -1,5 +1,5 @@
 require 'image'
-require 'normalizer/normalizer'
+require 'normalizer'
 
 im = image.load("bq01_006.png", 1)
 
