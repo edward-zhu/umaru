@@ -43,7 +43,7 @@ function ctc.__getFilledTargetFromString(target)
 end
 
 function ctc.__getFilledTarget(target)
-	local filled = torch.zeros((#target)[1] * 2 + 1)
+	local filled = torch.zeros(#target * 2 + 1)
 	for i = 1, (#filled)[1] do
 		if i % 2 == 0 then
 			filled[i] = target[i / 2]
@@ -205,11 +205,19 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	
 	
 	targetClasses = ctc.__getFilledTarget(target)
+	
+	-- print(targetClasses)
+	
 	targetMatrix = ctc.__getOnehotMatrix(targetClasses, class_num)
 
 	
 	
 	outputTable = ctc.__toMatrix(outputTable, class_num)
+	
+	outputTable = outputTable:cmax(1e-4)
+	local total = outputTable:sum(2):expand(outputTable:size()[1], outputTable:size()[2])
+	outputTable = torch.cdiv(outputTable, total)
+	
 	
 	-- print(outputTable)
 	
@@ -218,6 +226,8 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 			outputTable[i][j] = logs.safe_log(outputTable[i][j])
 		end
 	end
+	
+	
 	
 	
 	
@@ -240,12 +250,19 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	local bvs= ctc.__getBackwardVariable(outputTable, alignedTable, targetMatrix)
 	
 	local fb = fvs + bvs
-	
+
 	-- calculate gradient matrix (Tx(cls+1))
 	local grad = ctc.__getGrad(fb, pzx, class_num, outputTable, targetClasses)
 	
+	--[[
+	print("=========FVS=========")
+	print(fvs:t())
+	print("=========BVS=========")
+	print(bvs:t())
+	print("=========GRAD=========")
+	print(grad)
+	]]
 	
-	-- print(grad)
 	grad = nn.SplitTable(1):forward(grad)
 	
 	return -pzx, grad

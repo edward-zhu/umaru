@@ -1,7 +1,7 @@
 require 'image'
 require 'normalizer'
 
-im = image.load("bq01_006.png", 1)
+im = image.load("26.png", 1)
 
 if im:dim() == 3 then
 	im = im[1]

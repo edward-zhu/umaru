@@ -106,23 +106,35 @@ static double bilinear(double * in, int w, int h, double x, double y) {
 	
 	// printf("(%d, %d)\n", xi, yi);
 	
+	if (xi > w - 1 || yi > h - 1 || x < 0 || y < 0) {
+		return 0;
+	}
+	
 	xi = xi < 0 ? 0 : xi;
 	yi = yi < 0 ? 0 : yi;
+	
+	
 	xi = xi > w - 1 ? w - 1 : xi;
 	yi = yi > h - 1 ? h - 1 : yi;
+	
 	
 	xt = xt > w - 1 ? w - 1 : xt;
 	yt = yt > h - 1 ? h - 1 : yt;
 	
-	printf("(%d, %d)\n", xi, yi);
+	
 	
 	double p00 = in[yi * w + xi];
 	double p01 = in[yt * w + xi];
 	double p10 = in[yi * w + xt];
 	double p11 = in[yt * w + xt];
 	
-	p00 * (1.0 - xf) * (1.0 - yf) + p10 * xf * (1.0 - yf) + p01 * (1.0 - xf) * yf + p11 * xf * yf;
+	double result = p00 * (1.0 - xf) * (1.0 - yf) + p10 * xf * (1.0 - yf) + p01 * (1.0 - xf) * yf + p11 * xf * yf;
+	if (result < 0) {
+		printf("warning result < 0. %.4lf, %.4lf, %.4f, %.4f\n" \
+			 		"%.4f, %.4f, %.4f, %.4f\n", x, y, xf, yf, p00, p01, p10, p11);
+	}
 	
+	return result;
 }
 
 static void measure(THDoubleTensor * src, double * & center, double & mean, int & r) {
@@ -159,7 +171,7 @@ static void measure(THDoubleTensor * src, double * & center, double & mean, int 
 	mean = sy / s1;
 	r = int(mean * RANGE_RATE + 1);
 	
-	printf("mean = %lf r = %d\n", mean, r);
+	/* printf("mean = %lf r = %d\n", mean, r); */
 }
 
 static void normalize

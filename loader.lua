@@ -44,9 +44,7 @@ function Loader.__getNormalizedImage(src)
 	ones = torch.ones(h, w)
 
 	im = ones - im
-
 	normalizer.normalize(im, output)
-
 	return output
 end
 
@@ -55,7 +53,7 @@ function Loader:load(file)
 	local f = assert(io.open(file, "r"))
 	for line in f:lines() do
 		local src = line
-		local im = Loader.__getNormalizedImage(src)
+		local im = Loader.__getNormalizedImage(src):t()
 		
 		local gt = src:gsub(".png", ".gt.txt")
 		local cf = assert(io.open(gt, "r"))
