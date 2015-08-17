@@ -4,6 +4,7 @@ build/*
 ctc/*
 normalizer/*
 
+*.uma
 *.png
 *.tif
 

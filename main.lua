@@ -74,12 +74,20 @@ for i = 1, 100000 do
 	
 		loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
 	
-		if i % 10 == 0 then
+		if i % 100 == 0 then
 			print("")
 			show_log("EPOCH\t" .. i)
 			show_log("TARGET\t" .. sample.gt)
 			show_log("OUTPUT\t" .. decoder.best_path_decode(outputTable, codec))
 			show_log("LOSS\t" .. loss)
+		end
+		
+		if i % 10000 == 0 then
+			print("")
+			show_log("Saving model...")
+			local filename = string.format("umaru_model_%s_%d.uma", os.date("%y-%m-%d_%X"), i)
+			torch.save(filename, net)
+			show_log(string.format("Saving finished, saved model file is at %s.", filename))
 		end
 	
 		-- net:zeroGradParameters()
