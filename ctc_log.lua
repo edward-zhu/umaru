@@ -1,7 +1,22 @@
 require 'nn'
 require 'utils/logs'
+require 'libctc'
 
 ctc = {}
+
+local base = 0
+local timer = nil;
+
+
+
+function print_timestamp(msg) 
+	if not DEBUG then
+		return
+	end
+	
+	print(msg .. " " .. timer:time().real - base)
+	base = timer:time().real
+end
 
 --[[
 	getOnehotMatrix
@@ -64,9 +79,9 @@ end
 	
 	calculate ForwardVariable for any (t, u)
 
-	- outputTable: a T * (2C + 1) matrix
+	- outputTable: a T * (C + 1) matrix
 	- alignedTable: a T * L matrix
-	- target: a (2L + 1) * (2C + 1) matrix
+	- target: a (2L + 1) * (C + 1) matrix
 ]]--
 function ctc.__getForwardVariable(outputTable, alignedTable, target)
 	local T = (#outputTable)[1]
@@ -170,20 +185,27 @@ function ctc.__getGrad(fb, pzx, class_num, outputTable, target)
 	local grad = torch.zeros(T, class_num)
 	local temp_sum = 0
 	local u = 0
+	
+	
 	for t = 1, T do
 		for k = 1, class_num do
 			temp_sum = logs.LOG_ZERO
 			grad[t][k] = logs.log_mul(-pzx, -outputTable[t][k])
 			u = k
 			
+			
+			
 			-- if current label is blank
 			if u == class_num then u = 0 end
 			for i = 1, (#target)[1] do
 				if target[i] == u then
+					-- print(fb[t][i])
 					temp_sum = logs.log_add(temp_sum, fb[t][i])
 				end
 			end
+			
 			grad[t][k] = logs.log_mul(grad[t][k], temp_sum)
+			
 			grad[t][k] = -logs.safe_exp(grad[t][k])
 		end
 	end
@@ -199,37 +221,41 @@ function ctc.__getCost(fb, target)
 end
 
 function ctc.getCTCCostAndGrad(outputTable, target)
+	if DEBUG then
+		print("debug")
+		timer = torch.Timer()
+		base = 0;
+	end
+	
 	-- convert target to one-hot Matrix (class + 1 * len(target))
 	local class_num = (#(outputTable[1]))[1]
 	local T = #outputTable
 	
+	print_timestamp("CTC begin")
 	
 	targetClasses = ctc.__getFilledTarget(target)
 	
 	-- print(targetClasses)
 	
-	targetMatrix = ctc.__getOnehotMatrix(targetClasses, class_num)
-
 	
+	targetMatrix = ctc.__getOnehotMatrix(targetClasses, class_num)
 	
 	outputTable = ctc.__toMatrix(outputTable, class_num)
 	
 	outputTable = outputTable:cmax(1e-4)
 	local total = outputTable:sum(2):expand(outputTable:size()[1], outputTable:size()[2])
 	outputTable = torch.cdiv(outputTable, total)
-	
+
+	print_timestamp("perpare")
 	
 	-- print(outputTable)
 	
-	for i = 1, (#outputTable)[1] do
-		for j = 1, (#outputTable)[2] do
-			outputTable[i][j] = logs.safe_log(outputTable[i][j])
-		end
-	end
+	outputTable:apply(function (x)
+		x = logs.safe_log(x)
+		return x
+	end)
 	
-	
-	
-	
+	print_timestamp("log")
 	
 	-- get aligned_table
 		-- outputTable: Tx(cls+1)
@@ -238,7 +264,16 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	local alignedTable = outputTable * targetMatrix:t()
 
 	-- calculate forwardVariable (in log space)
-	local fvs = ctc.__getForwardVariable(outputTable, alignedTable, targetMatrix)
+	
+	local fvs, bvs, fb, grad
+	
+	if ctc_lua then
+		fvs = ctc.__getForwardVariable(outputTable, alignedTable, targetClasses)
+	else
+		fvs = libctc.get_forward_variable(outputTable, alignedTable, targetClasses)
+	end
+	
+	
 	
 	local L_1 = (#targetClasses)[1]
 	
@@ -247,12 +282,27 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 
 	
 	-- calculate backwardVariable (in log space)
-	local bvs= ctc.__getBackwardVariable(outputTable, alignedTable, targetMatrix)
+	if ctc_lua then
+		bvs = ctc.__getBackwardVariable(outputTable, alignedTable, targetClasses)
+	else
+		bvs = libctc.get_backward_variable(outputTable, alignedTable, targetClasses)
+	end
 	
-	local fb = fvs + bvs
+	-- print(torch.dist(bvs, bvs1))
+
+	print_timestamp("fw bw")
+	
+	fb = fvs + bvs
+	
 
 	-- calculate gradient matrix (Tx(cls+1))
-	local grad = ctc.__getGrad(fb, pzx, class_num, outputTable, targetClasses)
+	if ctc_lua then
+		grad = ctc.__getGrad(fb, pzx, class_num, outputTable, targetClasses)
+	else
+		grad = libctc.get_grad(fb, outputTable, targetClasses, pzx)
+	end
+	
+	print_timestamp("get grad")
 	
 	--[[
 	print("=========FVS=========")
@@ -263,7 +313,10 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	print(grad)
 	]]
 	
+	
+	
 	grad = nn.SplitTable(1):forward(grad)
+	
 	
 	return -pzx, grad
 	

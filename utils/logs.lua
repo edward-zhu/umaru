@@ -1,8 +1,8 @@
 logs = {
-	EXP_MAX		= 1e100,
-	EXP_MIN		= 1e-100,
-	LOG_ZERO	= -1e100,
-	LOG_INF		= 1e100
+	EXP_MAX		= 1e10,
+	EXP_MIN		= 1e-10,
+	LOG_ZERO	= -1e10,
+	LOG_INF		= 1e10
 }
 
 logs.EXP_LIMIT = math.log(logs.EXP_MAX)

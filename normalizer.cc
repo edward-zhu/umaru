@@ -11,7 +11,7 @@ const double SIGMA_RATE_VERT	= 0.5;
 const double SIGMA_RATE_HORZ 	= 1.0;
 const double SIGMA_RATE_CENTER	= 0.3;
 const double RANGE_RATE			= 4.0;
-const long TARGET_HEIGHT		= 64;
+const long TARGET_HEIGHT		= 32;
 
 template <class T>
 static void gauss1dWithMask(double * out, T  * in, long size, double * mask, long mask_size) {

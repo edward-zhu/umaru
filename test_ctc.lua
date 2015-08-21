@@ -1,6 +1,11 @@
 require 'nn'
 require 'ctc_log'
 
+
+
+
+torch.setdefaulttensortype('torch.FloatTensor')
+
 outputTable = torch.Tensor{
 	{0.0684907, 0.0683173, 0.0682402, 0.0682124, 0.0682041, 0.068242, 0.0682717},
 	{0.067452, 0.0671584, 0.066958, 0.0667768, 0.0665642, 0.0662235, 0.0656839},
@@ -18,9 +23,51 @@ outputTable = torch.Tensor{
 	{0.0736152, 0.0741163, 0.074329, 0.07439, 0.0743531, 0.0742006, 0.0738778},
 }
 
-target = torch.Tensor{4, 3, 13, 1, 10, 7}
+target = {4, 3, 13, 1, 10, 7}
+
+function toMatrix(outputTable)
+	local net = nn.Sequential()
+	net:add(nn.JoinTable(1))
+	net:add(nn.Reshape(#outputTable, outputTable[1]:size(1)))
+	return net:forward(outputTable)
+end
 
 -- outputTable = nn.Log():forward(outputTable:t())
+
 outputTable = nn.SplitTable(1):forward(outputTable:t())
 
-pzx, grad = ctc.getCTCCostAndGrad(outputTable, target)
+ctc_lua = true
+
+print("LUA")
+
+
+lua_pzx, lua_grad = ctc.getCTCCostAndGrad(outputTable, target)
+
+
+
+ctc_lua = false
+print("C")
+
+c_pzx, c_grad = ctc.getCTCCostAndGrad(outputTable, target)
+
+print(toMatrix(lua_grad))
+print(toMatrix(c_grad))
+
+if (lua_pzx == c_pzx) then
+	pass = true
+	for i = 1, #lua_grad do
+		if (lua_grad[i] ~= c_grad[i]) then
+			pass = false
+		end
+	end
+	
+	if pass then
+		print("PASS!")
+	else
+		print("FAILED.")
+	end
+else
+	print("FAILED.")
+end
+
+

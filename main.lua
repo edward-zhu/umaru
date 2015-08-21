@@ -7,7 +7,11 @@ require 'loader'
 require 'ctc_log'
 require 'utils/decoder'
 
+torch.setdefaulttensortype('torch.FloatTensor')
+
 base = 0
+
+DEBUG = true
 
 timer = torch.Timer()
 
@@ -20,15 +24,13 @@ end
 
 DROPOUT_RATE = 0.4
 
-local input_size = 64
-local hidden_size = 100
-
-
+local input_size = 32
+local hidden_size = 200
 
 show_log("Loading samples...")
 
 loader = Loader()
-loader:load("1.txt")
+loader:load("wwr.txt")
 codec = loader:codec()
 
 show_log(string.format("Loading finished. Got %d samples, %d classes of characters.", #loader.samples, codec.codec_size))
@@ -41,12 +43,13 @@ local net = nn.Sequential()
 
 net:add(nn.Dropout(DROPOUT_RATE))
 net:add(nn.SplitTable(1))
-net:add(nn.BiSequencer(nn.LSTM(input_size, hidden_size)))
+net:add(nn.BiSequencer(nn.FastLSTM(input_size, hidden_size)))
 
 output = nn.Sequential()
 output:add(nn.Linear(hidden_size * 2, class_num + 1))
 output:add(nn.SoftMax())
 net:add(nn.Sequencer(output))
+net:float()
 
 -- net:remember('both')
 
@@ -62,19 +65,29 @@ state = {
 show_log(string.format("Start training with learning rate = %.4f, momentum = %.4f", state.learningRate, state.momentum))
 
 
-for i = 1, 100000 do
+for i = 1, 1000000 do
 	local sample = loader:pick()
 	local im = sample.img
 	local target = codec:encode(sample.gt)
+	
 
 	local feval = function(params)
 		net:forget()
 	
+		local b1 = timer:time().real
+		
 		outputTable = net:forward(im)
+		
+		print("forward time: " .. timer:time().real - b1)
 	
+	
+		local b1 = timer:time().real
+		
 		loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
-	
-		if i % 100 == 0 then
+		
+		-- print("ctc time: " .. timer:time().real - b1)
+		
+		if i % 10 == 0 then
 			print("")
 			show_log("EPOCH\t" .. i)
 			show_log("TARGET\t" .. sample.gt)
@@ -94,9 +107,17 @@ for i = 1, 100000 do
 	
 		-- print(grad_params)
 		
+		-- ctc_lua = true
+		
+		-- print(grad)
+		
+		-- print("backward")
+		
 		net:backward(im, grad)
 		
-		grad_params:cmul(torch.eq(grad_params, grad_params):double())
+		-- print("backward finish")
+		
+		grad_params:cmul(torch.eq(grad_params, grad_params):float())
 		grad_params:clamp(-5, 5)
 	
 		return loss, grad_params
