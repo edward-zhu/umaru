@@ -9,10 +9,11 @@ require 'utils/decoder'
 
 torch.setdefaulttensortype('torch.FloatTensor')
 
+-- debug switch
+DEBUG = false
+
+-- timer initialize
 base = 0
-
-DEBUG = true
-
 timer = torch.Timer()
 
 function show_log(log)
@@ -22,10 +23,24 @@ function show_log(log)
 	print(string.format("[%.4f][%.4f]%s", now, cost, log))
 end 
 
+-- initialize
+
 DROPOUT_RATE = 0.4
+torch.manualSeed(450)
 
 local input_size = 32
 local hidden_size = 200
+
+GPU_ENABLED = 1
+
+-- GPU
+
+if GPU_ENABLED then
+	require 'cutorch'
+	require 'cunn'
+end
+
+-- load samples
 
 show_log("Loading samples...")
 
@@ -36,6 +51,8 @@ codec = loader:codec()
 show_log(string.format("Loading finished. Got %d samples, %d classes of characters.", #loader.samples, codec.codec_size))
 
 local class_num = codec.codec_size
+
+-- build network
 
 show_log("Building networks...")
 
@@ -51,9 +68,11 @@ output:add(nn.SoftMax())
 net:add(nn.Sequencer(output))
 net:float()
 
--- net:remember('both')
+if GPU_ENABLED then
+	net:cuda()
+end
 
-torch.manualSeed(450)
+-- prepare prarmeters and training method
 
 params, grad_params = net:getParameters()
 
@@ -64,9 +83,16 @@ state = {
 
 show_log(string.format("Start training with learning rate = %.4f, momentum = %.4f", state.learningRate, state.momentum))
 
+-- training
+
+begin_time = 0
 
 for i = 1, 1000000 do
+	local b1 = timer:time().real
+	
 	local sample = loader:pick()
+	--print("pick time: " .. timer:time().real - b1)
+
 	local im = sample.img
 	local target = codec:encode(sample.gt)
 	
@@ -74,25 +100,26 @@ for i = 1, 1000000 do
 	local feval = function(params)
 		net:forget()
 	
-		local b1 = timer:time().real
+		--local b1 = timer:time().real
 		
 		outputTable = net:forward(im)
 		
-		print("forward time: " .. timer:time().real - b1)
+		--print("forward time: " .. timer:time().real - b1)
 	
 	
-		local b1 = timer:time().real
+		--b1 = timer:time().real
 		
 		loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
 		
-		-- print("ctc time: " .. timer:time().real - b1)
+		--print("ctc time: " .. timer:time().real - b1)
 		
 		if i % 10 == 0 then
 			print("")
-			show_log("EPOCH\t" .. i)
-			show_log("TARGET\t" .. sample.gt)
-			show_log("OUTPUT\t" .. decoder.best_path_decode(outputTable, codec))
-			show_log("LOSS\t" .. loss)
+			show_log("EPOCH   " .. i)
+			show_log("TARGET  " .. sample.gt)
+			show_log("OUTPUT  " .. decoder.best_path_decode(outputTable, codec))
+			show_log("LOSS    " .. loss)
+			show_log("sec/ep  " .. (timer:time().real - begin_time) / i)
 		end
 		
 		if i % 10000 == 0 then
@@ -111,14 +138,21 @@ for i = 1, 1000000 do
 		
 		-- print(grad)
 		
-		-- print("backward")
-		
+		--b1 = timer:time().real
+
 		net:backward(im, grad)
+
+		--print("backward time: " .. timer:time().real - b1)
 		
 		-- print("backward finish")
+
+		--b1 = timer:time().real
+
 		
-		grad_params:cmul(torch.eq(grad_params, grad_params):float())
+		grad_params:cmul(grad_params:eq(grad_params))
 		grad_params:clamp(-5, 5)
+
+		--print("optim time: " .. timer:time().real - b1)
 	
 		return loss, grad_params
 	end

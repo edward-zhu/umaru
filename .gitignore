@@ -4,9 +4,10 @@ build/*
 ctc/*
 normalizer/*
 
+*.txt
+
 !CMakeLists.txt
 
-*.txt
 *.uma
 *.png
 *.tif

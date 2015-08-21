@@ -87,6 +87,9 @@ function Loader:pick()
 	
 	if self.samples[index].img == nil then
 		self.samples[index].img = Loader.__getNormalizedImage(self.samples[index].src):t()
+		if GPU_ENABLED then
+			self.samples[index].img = self.samples[index].img:cuda()
+		end
 	end
 	
 	return self.samples[index]

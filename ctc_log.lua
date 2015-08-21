@@ -231,7 +231,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	local class_num = (#(outputTable[1]))[1]
 	local T = #outputTable
 	
-	print_timestamp("CTC begin")
+	print_timestamp("	CTC begin")
 	
 	targetClasses = ctc.__getFilledTarget(target)
 	
@@ -241,12 +241,16 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	targetMatrix = ctc.__getOnehotMatrix(targetClasses, class_num)
 	
 	outputTable = ctc.__toMatrix(outputTable, class_num)
+
+	if torch.type(outputTable) ~= "torch.FloatTensor" then
+		outputTable = outputTable:float()
+	end
 	
 	outputTable = outputTable:cmax(1e-4)
 	local total = outputTable:sum(2):expand(outputTable:size()[1], outputTable:size()[2])
 	outputTable = torch.cdiv(outputTable, total)
 
-	print_timestamp("perpare")
+	print_timestamp("	perpare")
 	
 	-- print(outputTable)
 	
@@ -255,7 +259,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 		return x
 	end)
 	
-	print_timestamp("log")
+	print_timestamp("	log")
 	
 	-- get aligned_table
 		-- outputTable: Tx(cls+1)
@@ -290,7 +294,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	
 	-- print(torch.dist(bvs, bvs1))
 
-	print_timestamp("fw bw")
+	print_timestamp("	fw bw")
 	
 	fb = fvs + bvs
 	
@@ -302,7 +306,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 		grad = libctc.get_grad(fb, outputTable, targetClasses, pzx)
 	end
 	
-	print_timestamp("get grad")
+	print_timestamp("	get grad")
 	
 	--[[
 	print("=========FVS=========")
@@ -313,7 +317,9 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	print(grad)
 	]]
 	
-	
+	if GPU_ENABLED then
+		grad = grad:cuda()
+	end
 	
 	grad = nn.SplitTable(1):forward(grad)
 	
