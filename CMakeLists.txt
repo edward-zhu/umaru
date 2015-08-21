@@ -13,7 +13,7 @@ foreach(target libctc normalizer)
 		SUFFIX ".so"
 		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/../"
 	)
-	target_link_libraries(${target} TH luaT luajit openmp)
+	target_link_libraries(${target} TH luaT luajit)
 endforeach(target)
 
 

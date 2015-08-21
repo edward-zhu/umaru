@@ -38,7 +38,7 @@ outputTable = nn.SplitTable(1):forward(outputTable:t())
 
 ctc_lua = true
 
-print("LUA")
+print("running LUA VERSION ...")
 
 
 lua_pzx, lua_grad = ctc.getCTCCostAndGrad(outputTable, target)
@@ -46,26 +46,17 @@ lua_pzx, lua_grad = ctc.getCTCCostAndGrad(outputTable, target)
 
 
 ctc_lua = false
-print("C")
+print("running C VERSION ...")
 
 c_pzx, c_grad = ctc.getCTCCostAndGrad(outputTable, target)
 
-print(toMatrix(lua_grad))
-print(toMatrix(c_grad))
+lua_m = toMatrix(lua_grad)
+c_m = toMatrix(c_grad)
 
-if (lua_pzx == c_pzx) then
-	pass = true
-	for i = 1, #lua_grad do
-		if (lua_grad[i] ~= c_grad[i]) then
-			pass = false
-		end
-	end
-	
-	if pass then
-		print("PASS!")
-	else
-		print("FAILED.")
-	end
+print("dist = " .. torch.dist(lua_m, c_m))
+
+if (torch.dist(lua_m, c_m) < 1e-3) then
+	print("PASS!")
 else
 	print("FAILED.")
 end
