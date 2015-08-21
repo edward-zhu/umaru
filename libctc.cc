@@ -7,6 +7,8 @@ extern "C" {
 #include <iostream>
 #include <vector>
 
+#define ENABLE_OPENMP
+
 static const float EXP_MAX		= 1e10;
 static const float EXP_MIN		= 1e-10;
 static const float LOG_ZERO		= -1e10;
@@ -207,15 +209,20 @@ static THFloatTensor * __get_grad(THFloatTensor * fbT, THFloatTensor * outputTab
 	float * grad = THFloatTensor_data(gradT);
 	float * target = THFloatTensor_data(targetT);
 	
-	
-	
-	#pragma omp parallel for
-	for (int t = 0; t < T; t++) {
-		float tmp_sum = 0, u = 0;
+	float tmp_sum = 0, u = 0, tmp = 0;
+
+	int t;
+
+	#ifdef ENABLE_OPENMP
+	#pragma omp parallel for private(tmp_sum, u, tmp, pos) lastprivate(t)
+	#endif
+	for (t = 0; t < T; t++) {
+		// printf("%d\n", t);
+		
 		for (int k = 0; k < class_num; k++) {
 			pos = t * class_num + k;
 			tmp_sum = LOG_ZERO;
-			grad[pos] = log_mul(-pzx, -output[pos]);
+			tmp = log_mul(-pzx, -output[pos]);
 			u = k + 1;
 			
 			if (u == class_num) {
@@ -230,13 +237,12 @@ static THFloatTensor * __get_grad(THFloatTensor * fbT, THFloatTensor * outputTab
 			}
 			
 			
-			grad[pos] = log_mul(grad[pos], tmp_sum);
+			tmp = log_mul(tmp, tmp_sum);
 			
-			// printf("%d\t%d\t%f\n", t, k, grad[pos]);
-			
-			grad[pos] = -safe_exp(grad[pos]);
+			grad[pos] = -safe_exp(tmp);
 		}
 	}
+	#pragma omp barrier
 	
 	return gradT;
 }

@@ -40,15 +40,22 @@ ctc_lua = true
 
 print("running LUA VERSION ...")
 
+timer = torch.Timer()
+local base = 0
+
+
 
 lua_pzx, lua_grad = ctc.getCTCCostAndGrad(outputTable, target)
 
-
+print("LUA VERSION finished in " .. timer:time().real - base  .. " s.")
+base = timer:time().real
 
 ctc_lua = false
 print("running C VERSION ...")
 
 c_pzx, c_grad = ctc.getCTCCostAndGrad(outputTable, target)
+
+print("C VERSION finished in " .. timer:time().real - base  .. " s.")
 
 lua_m = toMatrix(lua_grad)
 c_m = toMatrix(c_grad)
