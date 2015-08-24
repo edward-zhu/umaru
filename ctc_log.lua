@@ -321,6 +321,8 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 		grad = grad:cuda()
 	end
 	
+	-- print(grad)
+	
 	grad = nn.SplitTable(1):forward(grad)
 	
 	

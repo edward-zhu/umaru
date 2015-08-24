@@ -7,7 +7,9 @@ require 'loader'
 require 'ctc_log'
 require 'utils/decoder'
 
+-- initialize
 torch.setdefaulttensortype('torch.FloatTensor')
+torch.manualSeed(450)
 
 -- debug switch
 DEBUG = false
@@ -23,15 +25,24 @@ function show_log(log)
 	print(string.format("[%.4f][%.4f]%s", now, cost, log))
 end 
 
--- initialize
+-- settings
 
 DROPOUT_RATE = 0.4
-torch.manualSeed(450)
-
+GPU_ENABLED = false
 local input_size = 32
 local hidden_size = 200
 
-GPU_ENABLED = 1
+-- configuration
+training_list_file = "1.txt"
+using_model_file = "models/umaru_model_15-08-24_09/12/13_210000.uma"
+
+-- curriculum training settings
+
+curriculum_training = false
+weight_change_iter_span = 10000
+lambda = 3
+lambda_change_every = 1000
+lambda_grad = lambda / (weight_change_iter_span / lambda_change_every)
 
 -- GPU
 
@@ -45,7 +56,7 @@ end
 show_log("Loading samples...")
 
 loader = Loader()
-loader:load("wwr.txt")
+loader:load(training_list_file)
 codec = loader:codec()
 
 show_log(string.format("Loading finished. Got %d samples, %d classes of characters.", #loader.samples, codec.codec_size))
@@ -56,17 +67,23 @@ local class_num = codec.codec_size
 
 show_log("Building networks...")
 
-local net = nn.Sequential()
+local net
 
-net:add(nn.Dropout(DROPOUT_RATE))
-net:add(nn.SplitTable(1))
-net:add(nn.BiSequencer(nn.FastLSTM(input_size, hidden_size)))
+if using_model_file then
+	net = torch.load(using_model_file)
+else
+	net = nn.Sequential()
 
-output = nn.Sequential()
-output:add(nn.Linear(hidden_size * 2, class_num + 1))
-output:add(nn.SoftMax())
-net:add(nn.Sequencer(output))
-net:float()
+	net:add(nn.Dropout(DROPOUT_RATE))
+	net:add(nn.SplitTable(1))
+	net:add(nn.BiSequencer(nn.FastLSTM(input_size, hidden_size)))
+
+	output = nn.Sequential()
+	output:add(nn.Linear(hidden_size * 2, class_num + 1))
+	output:add(nn.SoftMax())
+	net:add(nn.Sequencer(output))
+	net:float()
+end
 
 if GPU_ENABLED then
 	net:cuda()
@@ -90,7 +107,18 @@ begin_time = 0
 for i = 1, 1000000 do
 	local b1 = timer:time().real
 	
-	local sample = loader:pick()
+	local sample
+	
+	if not curriculum_training then
+		sample = loader:pick()
+	else
+		sample = loader:pickWithWeight()
+		if i % lambda_change_every == 0 then
+			lambda = lambda - lambda_grad
+			loader:updateWeight(lambda)
+			show_log("lambda was changed to " .. lambda)
+		end
+	end
 	--print("pick time: " .. timer:time().real - b1)
 
 	local im = sample.img
@@ -113,7 +141,7 @@ for i = 1, 1000000 do
 		
 		--print("ctc time: " .. timer:time().real - b1)
 		
-		if i % 10 == 0 then
+		if i % 1 == 0 then
 			print("")
 			show_log("EPOCH   " .. i)
 			show_log("TARGET  " .. sample.gt)
@@ -126,7 +154,7 @@ for i = 1, 1000000 do
 			print("")
 			show_log("Saving model...")
 			local filename = string.format("umaru_model_%s_%d.uma", os.date("%y-%m-%d_%X"), i)
-			torch.save(filename, net)
+			torch.save(filename, net:float())
 			show_log(string.format("Saving finished, saved model file is at %s.", filename))
 		end
 	
@@ -149,8 +177,9 @@ for i = 1, 1000000 do
 		--b1 = timer:time().real
 
 		
-		grad_params:cmul(grad_params:eq(grad_params))
-		grad_params:clamp(-5, 5)
+		grad_params:cmul(grad_params:eq(grad_params):float())
+		
+		grad_params:clamp(-1, 1)
 
 		--print("optim time: " .. timer:time().real - b1)
 	

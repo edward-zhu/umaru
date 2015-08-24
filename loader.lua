@@ -12,7 +12,8 @@ Loader = {
 	codec_size = 0,
 	codec_obj = nil,
 	threshold = 3,
-	lambda = 3.0
+	lambda = 3.0,
+	pos = 0
 }
 
 setmetatable(Loader, {
@@ -53,10 +54,8 @@ function Loader:load(file)
 	local f = assert(io.open(file, "r"))
 	for line in f:lines() do
 		local src = line
-		
-		
-		local gt = src:gsub(".png", ".gt.txt")
-		local cf = assert(io.open(gt, "r"))
+		local gt = src:gsub("[.].*", ".gt.txt")
+		local cf = io.open(gt, "r")
 		local gt = cf:read("*line")
 		cf:close()
 		
@@ -82,9 +81,7 @@ function Loader:load(file)
 	-- return self.samples
 end
 
-function Loader:pick()
-	local index = torch.random(#self.samples)
-	
+function Loader:__pick(index)
 	if self.samples[index].img == nil then
 		self.samples[index].img = Loader.__getNormalizedImage(self.samples[index].src):t()
 		if GPU_ENABLED then
@@ -93,6 +90,12 @@ function Loader:pick()
 	end
 	
 	return self.samples[index]
+end
+
+function Loader:pick()
+	local index = torch.random(#self.samples)
+	
+	return self:__pick(index)
 end
 
 function Loader:pickWithWeight()
@@ -114,7 +117,16 @@ function Loader:pickWithWeight()
 	index = index[1]
 	self.p[index] = torch.normal(1.0 / self.weights[index], 1.0 / self.weights[index] / 3.0) + 1
 	
-	return self.samples[index]
+	return self:__pick(index)
+end
+
+function Loader:pickInSequential()
+	if self.pos <= #self.samples then
+		self.pos = self.pos + 1
+		return self:__pick(self.pos - 1)
+	else
+		return nil
+	end
 end
 
 function Loader:updateWeight(lambda)
