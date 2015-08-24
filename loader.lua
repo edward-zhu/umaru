@@ -13,7 +13,7 @@ Loader = {
 	codec_obj = nil,
 	threshold = 3,
 	lambda = 3.0,
-	pos = 0
+	pos = 1
 }
 
 setmetatable(Loader, {

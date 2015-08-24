@@ -5,7 +5,8 @@ require 'optim'
 
 require 'loader'
 require 'ctc_log'
-require 'utils/decoder'
+require 'utils.decoder'
+require 'utils.levenshtein'
 
 -- initialize
 torch.setdefaulttensortype('torch.FloatTensor')
@@ -21,17 +22,18 @@ function show_log(log)
 	local now = timer:time().real
 	local cost = now - base
 	base = now
-	print(string.format("[%.4f][%.4f]%s", now, cost, log))
+	-- print(string.format("[%.4f][%.4f]%s", now, cost, log))
+	print(string.format("%s", log))
 end 
 
 -- settings
 
-GPU_ENABLED = false
+GPU_ENABLED = true
 local input_size = 32
 
 -- configuration
-list_file = "1.txt"
-using_model_file = "models/umaru_model_15-08-24_09_12_13_210000.uma"
+list_file = "wwr.txt"
+using_model_file = "umaru_model_15-08-24_09:12:13_210000.uma"
 
 -- GPU
 
@@ -77,6 +79,8 @@ show_log(string.format("Start solving with model file: %s", using_model_file))
 local sample = loader:pickInSequential()
 
 begin_time = timer:time().real
+local dist, tmp_dist, out = 0, 0, 0
+local len, tmp_len = 0, 0
 
 while sample do
 	local im = sample.img
@@ -86,13 +90,21 @@ while sample do
 	
 	outputTable = net:forward(im)
 
-	if i % 1 == 0 then
-		print("")
-		show_log("EPOCH   " .. i)
-		show_log("TARGET  " .. sample.gt)
-		show_log("OUTPUT  " .. decoder.best_path_decode(outputTable, codec))
-		show_log("sec/ep  " .. (timer:time().real - begin_time) / i)
-	end
+	out = decoder.best_path_decode(outputTable, codec)
+
+	tmp_dist = utf8.levenshtein(out, sample.gt)
+	tmp_len = utf8.len(sample.gt)
+	dist = dist + tmp_dist
+	len = len + tmp_len
+
+	print("")
+	show_log("FILE     " .. sample.src)
+	show_log("TARGET   " .. sample.gt)
+	show_log("OUTPUT   " .. out)
+	show_log("DISTANCE " .. tmp_dist)
+	show_log("ERROR    " .. string.format("%.2f%%", dist / len * 100))
+
+	sample = loader:pickInSequential()
 end
 
 
