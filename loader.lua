@@ -5,6 +5,8 @@ utf8 = require 'utf8'
 
 Loader = {
 	samples = {},
+	training = {},
+	testing = {},
 	weights = nil,
 	p = nil,
 	codec_table = {},
@@ -13,7 +15,8 @@ Loader = {
 	codec_obj = nil,
 	threshold = 3,
 	lambda = 3.0,
-	pos = 1
+	pos = 1,
+	target_height = 32
 }
 
 setmetatable(Loader, {
@@ -30,7 +33,34 @@ function Loader:new(o)
 	return o
 end
 
-function Loader.__getNormalizedImage(src)
+function Loader:shuffle()
+	for i = 1, #self.samples do
+		local j = torch.random(#self.samples)
+		self.samples[i], self.samples[j]= self.samples[j], self.samples[i]
+	end
+end
+
+function Loader:__split(rate)
+	assert(rate <= 1 and rate > 0, "", "invalid rate")
+	ntrain = math.floor(#self.samples * rate)
+	ntest = #self.samples - ntrain
+	
+	for i = 1, #self.samples do
+		if i <= ntrain then
+			table.insert(self.training, self.samples[i])
+		else
+			table.insert(self.testing, self.samples[i])
+		end
+	end
+end
+
+function Loader:targetHeight(target_height)
+	self.target_height = target_height or self.target_height
+	return targetHeight
+end
+
+function Loader:__getNormalizedImage(src)
+	
 	local im = image.load(src, 1)
 
 	if im:dim() == 3 then
@@ -45,11 +75,11 @@ function Loader.__getNormalizedImage(src)
 	ones = torch.ones(h, w)
 
 	im = ones - im
-	normalizer.normalize(im:double(), output)
+	normalizer.normalize(im:double(), output, self.target_height)
 	return output:float()
 end
 
-function Loader:load(file)
+function Loader:load(file, rate)
 	self.samples = {}
 	local f = assert(io.open(file, "r"))
 	for line in f:lines() do
@@ -78,35 +108,44 @@ function Loader:load(file)
 	self.codec_obj = nil
 	self.weights = nil
 	
+	rate = rate or 1
+	self:__split(rate)
+	
 	-- return self.samples
 end
 
-function Loader:__pick(index)
-	if self.samples[index].img == nil then
-		self.samples[index].img = Loader.__getNormalizedImage(self.samples[index].src):t()
+function Loader:__pick(index, from)
+	from = from or "training"
+	
+	if self[from][index].img == nil then
+		self[from][index].img = self:__getNormalizedImage(self[from][index].src):t()
 		if GPU_ENABLED then
-			self.samples[index].img = self.samples[index].img:cuda()
+			self[from][index].img = self[from][index].img:cuda()
 		end
 	end
 	
-	return self.samples[index]
+	return self[from][index]
 end
 
 function Loader:pick()
-	local index = torch.random(#self.samples)
+	from = from or "training"
+	assert(self[from], "invalid set name.")
+	
+	local index = torch.random(#self[from])
 	
 	return self:__pick(index)
 end
 
 function Loader:pickWithWeight()
+	
 	if self.weights == nil then
-		self.weights = torch.zeros(#self.samples)
+		self.weights = torch.zeros(#self.training)
 		for i, v in ipairs(self.samples) do
 			self.weights[i] = math.pow(1.0 / math.max(utf8.len(v.gt), self.threshold), self.lambda)
 		end
 		self.weights = torch.div(self.weights, torch.sum(self.weights))
 		
-		self.p = torch.zeros(#self.samples)
+		self.p = torch.zeros(#self.training)
 		local i = 0
 		self.p:apply(function()
 			i = i + 1
@@ -120,10 +159,15 @@ function Loader:pickWithWeight()
 	return self:__pick(index)
 end
 
-function Loader:pickInSequential()
-	if self.pos <= #self.samples then
+function Loader:reset()
+	self.pos = 1
+end
+
+function Loader:pickInSequential(from)
+	from = from or "sample"
+	if self.pos <= #self[from] then
 		self.pos = self.pos + 1
-		return self:__pick(self.pos - 1)
+		return self:__pick(self.pos - 1, from)
 	else
 		return nil
 	end

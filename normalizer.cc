@@ -175,11 +175,10 @@ static void measure(THDoubleTensor * src, double * & center, double & mean, int 
 }
 
 static void normalize
-	(THDoubleTensor * src, THDoubleTensor * out, double * center, double mean, int r) {
+	(THDoubleTensor * src, THDoubleTensor * out, double * center, double mean, int r, int target_height) {
 	long h = src->size[0];
 	long w = src->size[1];
-	int target_height = TARGET_HEIGHT;
-	float scale = (2.0 * r) / TARGET_HEIGHT;
+	float scale = (2.0 * r) / target_height;
 	int target_width = fmax(int(w / scale), 1);
 	
 	double * inData = THDoubleTensor_data(src);
@@ -246,12 +245,18 @@ static int normalizer_normalize(lua_State * L)
 	THDoubleTensor * output = 
 		(THDoubleTensor *)luaT_checkudata(L, 2, "torch.DoubleTensor");
 	
+	int target_height = TARGET_HEIGHT;
+	
+	if(lua_isnumber(L, 3)) {
+		target_height = luaL_checkint(L, 3);
+	}
+	
 	double * center = NULL;
 	double mean = 0.0;
 	int r = 0;
 	
 	measure(input, center, mean, r);
-	normalize(input, output, center, mean, r);
+	normalize(input, output, center, mean, r, target_height);
 	
 	
 	delete [] center;
