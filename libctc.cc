@@ -1,6 +1,7 @@
 extern "C" {
 #include <luaT.h>
 #include <TH/TH.h>
+#include <assert.h>
 }
 
 #include <cmath>
@@ -102,8 +103,11 @@ static THFloatTensor * __get_forward_variable(THFloatTensor * outputTable, THFlo
 		if (lower_bound < 1) {
 			lower_bound = 1;
 		}
+
+		assert(lower_bound >= 0 && lower_bound < T * L);
+		assert(upper_bound >= 0 && upper_bound < T * L);
+
 		for (int u = lower_bound; u < upper_bound; u++) {
-			
 			float tmp = LOG_ZERO;
 			
 			fvs_i1u = fvs[(i - 1) * L + u];
@@ -137,6 +141,8 @@ static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFl
 	THFloatStorage_fill(bvsT->storage, LOG_ZERO);
 	float * bvs = THFloatTensor_data(bvsT);
 	
+	assert(T * L >= 2);
+
 	bvs[T * L - 1] = 0;
 	bvs[T * L - 2] = 0;
 	
@@ -165,6 +171,9 @@ static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFl
 		if (upper_bound > L - 2) {
 			upper_bound = L - 2;
 		}
+
+		assert(upper_bound >= 0 && upper_bound < L);
+		assert(lower_bound >= 0 && lower_bound < L);
 		
 		// printf("%d  %d\n", upper_bound, lower_bound);
 		
@@ -172,6 +181,12 @@ static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFl
 			
 			float tmp = LOG_ZERO;
 			
+			assert((i * L + u < T * L) && (i * L + u) >= 0);
+			assert(((i + 1) * L + u) >= 0 && ((i + 1) * L + u) < T * L);
+			assert(((i + 1) * L + u + 1) >= 0 && ((i + 1) * L + u + 1) < T * L);
+			assert((u >= L - 1) || ((i + 1) * L + u + 1 >= 0 && ((i + 1) * L + u + 1 < T * L)));
+			assert(!(u < L - 2 && target[u + 2] != target[u]) || ((i + 1) * L + u + 2) >= 0 && ((i + 1) * L + u + 2) < T * L);
+
 			bvs_i1u = bvs[(i + 1) * L + u];
 			bvs_i1u1 = (u < L - 1) ? bvs[(i + 1) * L + u + 1] : LOG_ZERO;
 			bvs_i1u2 = (u < L - 2 && target[u + 2] != target[u]) ? bvs[(i + 1) * L + u + 2] : LOG_ZERO;
@@ -180,6 +195,7 @@ static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFl
 			tmp = log_add(tmp, log_mul(aligned[(i + 1) * L + u + 1], bvs_i1u1));
 			
 			if (u % 2 && u < L - 2) {
+				assert(((i + 1) * L + u + 2) >= 0 && ((i + 1) * L + u + 2) < T * L);
 				tmp = log_add(tmp, log_mul(aligned[(i + 1) * L + u + 2], bvs_i1u2));		
 			}
 			
@@ -221,6 +237,9 @@ static THFloatTensor * __get_grad(THFloatTensor * fbT, THFloatTensor * outputTab
 		
 		for (int k = 0; k < class_num; k++) {
 			pos = t * class_num + k;
+
+			assert(pos >=0 && pos < class_num * T);
+
 			tmp_sum = LOG_ZERO;
 			tmp = log_mul(-pzx, -output[pos]);
 			u = k + 1;
@@ -232,6 +251,9 @@ static THFloatTensor * __get_grad(THFloatTensor * fbT, THFloatTensor * outputTab
 			for (int i = 0; i < L; i++) {
 				if (target[i] == u) {
 					// printf("%.4f\n", fb[t * L + i]);
+
+					assert((t * L + i) >=0 && (t * L + i) < T * L);
+
 					tmp_sum = log_add(fb[t * L + i], tmp_sum);
 				}
 			}

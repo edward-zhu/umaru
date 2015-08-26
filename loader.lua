@@ -1,7 +1,8 @@
 require 'image'
 require 'codec'
 require 'normalizer'
-utf8 = require 'utf8'
+local lfs = require 'lfs'
+local utf8 = require 'utf8'
 
 Loader = {
 	samples = {},
@@ -84,6 +85,13 @@ function Loader:load(file, rate)
 	local f = assert(io.open(file, "r"))
 	for line in f:lines() do
 		local src = line
+
+		if lfs.attributes(src, "size") < 200 then
+			print("found invalid sample " .. src)
+			goto continue
+		end
+
+
 		local gt = src:gsub("[.].*", ".gt.txt")
 		local cf = io.open(gt, "r")
 		local gt = cf:read("*line")
@@ -98,6 +106,8 @@ function Loader:load(file, rate)
 		end
 		
 		table.insert(self.samples, {src = src, gt = gt, img = nil})
+
+		::continue::
 	end
 	f:close()
 	
@@ -118,8 +128,16 @@ function Loader:__pick(index, from)
 	from = from or "training"
 	
 	if self[from][index].img == nil then
-		self[from][index].img = self:__getNormalizedImage(self[from][index].src):t()
-		if GPU_ENABLED then
+
+		t = self[from][index].src:sub(-3, -1)
+
+		if (t == "png") then
+			self[from][index].img = self:__getNormalizedImage(self[from][index].src):t()
+		elseif (t == ".ft") then
+			self[from][index].img = torch.load(self[from][index].src):t()
+		end
+		
+		if false then
 			self[from][index].img = self[from][index].img:cuda()
 		end
 	end

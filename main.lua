@@ -29,15 +29,16 @@ end
 -- settings
 
 DROPOUT_RATE = 0.4
-GPU_ENABLED = false
-local input_size = 48
+GPU_ENABLED = true
+local input_size = 500
 local hidden_size = 200
 show_every = 0
 save_every = 10000
 test_every = 1000
+ctc_lua = false
 
 -- configuration
-training_list_file = "1.txt"
+training_list_file = "1f.txt"
 using_model_file = nil
 
 -- curriculum training settings
@@ -65,8 +66,12 @@ loader:targetHeight(input_size)
 loader:load(training_list_file, 0.8)
 codec = loader:codec()
 
+torch.save(training_list_file:gsub("[.].*", ".codec"), codec)
+
 show_log(string.format("Loading finished. Got %d samples, %d classes of characters.", #loader.samples, codec.codec_size))
 show_log(string.format("Splited into %d for training, %d for testing", #loader.training, #loader.testing))
+
+
 
 local class_num = codec.codec_size
 
@@ -130,9 +135,16 @@ for i = 1, 1000000 do
 	end
 	--print("pick time: " .. timer:time().real - b1)
 
-	local im = sample.img
+	local im
+
+	if GPU_ENABLED then
+		im = sample.img:cuda()
+	else
+		im = sample.img
+	end
+
+
 	local target = codec:encode(sample.gt)
-	
 
 	local feval = function(params)
 		-- net:forget()
@@ -188,9 +200,9 @@ for i = 1, 1000000 do
 		--b1 = timer:time().real
 
 		
-		grad_params:cmul(grad_params:eq(grad_params):float())
+		grad_params:cmul(grad_params:eq(grad_params))
 		
-		grad_params:clamp(-5, 5)
+		grad_params:clamp(-1, 1)
 
 		--print("optim time: " .. timer:time().real - b1)
 	
@@ -199,7 +211,7 @@ for i = 1, 1000000 do
 	
 	optim.sgd(feval, params, state)
 	
-	net:maxParamNorm(2)
+	-- net:maxParamNorm(2)
 	
 	-- testing
 	
@@ -211,7 +223,13 @@ for i = 1, 1000000 do
 		local s = loader:pickInSequential("testing")
 		
 		while s do
-			local out = decoder.best_path_decode(net:forward(s.img), codec)
+			local im
+			if GPU_ENABLED then
+				im = s.img:cuda()
+			else
+				im = s.img
+			end
+			local out = decoder.best_path_decode(net:forward(im), codec)
 			dist = dist + utf8.levenshtein(s.gt, out)
 			len = len + utf8.len(s.gt)
 			

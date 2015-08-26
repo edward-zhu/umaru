@@ -5,8 +5,10 @@ ctc/*
 normalizer/*
 
 *.txt
-
+*.codec
 !CMakeLists.txt
+
+.*
 
 *.uma
 *.png
