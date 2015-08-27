@@ -29,9 +29,11 @@ end
 -- settings
 
 DROPOUT_RATE = 0.4
-GPU_ENABLED = true
-local input_size = 500
-local hidden_size = 200
+GPU_ENABLED = false
+local input_size = 32
+local hidden_size = 100
+clamp_size = 10
+
 show_every = 0
 save_every = 10000
 test_every = 1000
@@ -79,16 +81,19 @@ local class_num = codec.codec_size
 
 show_log("Building networks...")
 
-local net
+local net, lstm
 
 if using_model_file then
 	net = torch.load(using_model_file)
 else
 	net = nn.Sequential()
 
-	-- net:add(nn.Dropout(DROPOUT_RATE))
+	net:add(nn.Dropout(DROPOUT_RATE))
 	net:add(nn.SplitTable(1))
-	net:add(nn.BiSequencer(nn.FastLSTM(input_size, hidden_size)))
+	
+	lstm = nn.FastLSTM(input_size, hidden_size)
+	
+	net:add(nn.BiSequencer(lstm))
 	output = nn.Sequential()
 	-- 
 	output:add(nn.Linear(hidden_size * 2, class_num + 1))
@@ -96,6 +101,8 @@ else
 	net:add(nn.Sequencer(output))
 	net:float()
 end
+
+print(net)
 
 if GPU_ENABLED then
 	net:cuda()
@@ -105,12 +112,15 @@ end
 
 params, grad_params = net:getParameters()
 
+lstmp, lstmg = lstm:getParameters()
+
 state = {
 	learningRate = 1e-4,
 	momentum = 0.9
 }
 
-show_log(string.format("Start training with learning rate = %.4f, momentum = %.4f", state.learningRate, state.momentum))
+show_log(string.format("Start training with learning rate = %.4f, momentum = %.4f, clamp_size = %.4f, input_size = %d", state.learningRate, state.momentum, clamp_size, input_size))
+show_log(string.format("clamp_size = %.4f, input_size = %d", clamp_size, input_size))
 
 -- training
 
@@ -198,14 +208,16 @@ for i = 1, 1000000 do
 		-- print("backward finish")
 
 		--b1 = timer:time().real
+		
 
 		
 		grad_params:cmul(grad_params:eq(grad_params))
 		
-		grad_params:clamp(-1, 1)
 
-		--print("optim time: " .. timer:time().real - b1)
-	
+		
+		grad_params:clamp(-clamp_size, clamp_size)
+		
+
 		return loss, grad_params
 	end
 	
