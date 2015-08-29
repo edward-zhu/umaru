@@ -40,7 +40,7 @@ test_every = 1000
 ctc_lua = false
 
 -- configuration
-training_list_file = "1f.txt"
+training_list_file = "1.txt"
 using_model_file = nil
 
 -- curriculum training settings
@@ -129,6 +129,7 @@ begin_time = 0
 
 
 for i = 1, 1000000 do
+	orig = params:clone()
 	local b1 = timer:time().real
 	
 	local sample
@@ -211,7 +212,7 @@ for i = 1, 1000000 do
 		
 
 		
-		grad_params:cmul(grad_params:eq(grad_params))
+		grad_params:cmul(grad_params:eq(grad_params):float())
 		
 
 		
@@ -222,7 +223,7 @@ for i = 1, 1000000 do
 	end
 	
 	optim.sgd(feval, params, state)
-	
+	print(torch.dist(orig, params))
 	-- net:maxParamNorm(2)
 	
 	-- testing

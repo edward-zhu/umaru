@@ -233,14 +233,17 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	
 	print_timestamp("	CTC begin")
 	
+	
+	
 	targetClasses = ctc.__getFilledTarget(target)
 	
-	-- print(targetClasses)
 	
 	
 	targetMatrix = ctc.__getOnehotMatrix(targetClasses, class_num)
 	
 	outputTable = ctc.__toMatrix(outputTable, class_num)
+	
+	-- print(outputTable)
 
 	if torch.type(outputTable) ~= "torch.FloatTensor" then
 		outputTable = outputTable:float()
@@ -252,7 +255,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 
 	print_timestamp("	perpare")
 	
-	-- print(outputTable)
+	
 	
 	outputTable:apply(function (x)
 		x = logs.safe_log(x)
@@ -261,13 +264,22 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	
 	print_timestamp("	log")
 	
+	
+	
 	-- get aligned_table
 		-- outputTable: Tx(cls+1)
 		-- target: L'x(cls+1) --> targetT : (cls+1)xL'
 		-- alienged_table = TxL'
-	local alignedTable = outputTable * targetMatrix:t()
-
+		
+		
+		
+	local tmp = targetMatrix:t()
+	
+	local alignedTable = outputTable * tmp
+	
 	-- calculate forwardVariable (in log space)
+	
+	
 	
 	local fvs, bvs, fb, grad
 	
@@ -298,6 +310,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	
 	fb = fvs + bvs
 	
+	
 
 	-- calculate gradient matrix (Tx(cls+1))
 	if ctc_lua then
@@ -321,7 +334,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 		grad = grad:cuda()
 	end
 	
-
+	
 	grad = nn.SplitTable(1):forward(grad)
 	
 	

@@ -34,6 +34,7 @@ DROPOUT_RATE = 0.4
 GPU_ENABLED = false
 local input_size = 32
 local hidden_size = 200
+clamp_size = 5
 
 -- configuration
 training_list_file = "1.txt"
@@ -49,9 +50,9 @@ end
 
 show_log("Loading samples...")
 
-loader = Loader()
+local loader = Loader()
 loader:load(training_list_file)
-codec = loader:codec()
+local codec = loader:codec()
 
 show_log(string.format("Loading finished. Got %d samples, %d classes of characters.", #loader.samples, codec.codec_size))
 
@@ -77,6 +78,8 @@ net:float()
 
 -- prepare prarmeters and training method
 
+local params, grad_params
+
 params, grad_params = net:getParameters()
 
 state = {
@@ -84,14 +87,45 @@ state = {
 	momentum = 0.9
 }
 
+a = "123"
+
+local orig = nil
+
 
 -- threading
 
-local nthread = 4
+local nthread = 1
 
-local pool = threads.Threads(nthread, 
+threads.serialization('threads.sharedserialize')
+
+local pool = threads(nthread, 
 	function(id)
 		print("new thread " .. id)
+		require 'nn'
+		require 'rnn'
+		require 'ctc_log'
+	end,
+	
+	function()
+		print("function()")
+		torch.setdefaulttensortype('torch.FloatTensor')
+		local n = net:sharedClone(true, false)
+		local p, gp = n:getParameters()
+		
+		print(n:get(4):get(1))
+
+		local loss, grad
+		
+		function eval(id, im, target)
+
+			outputTable = n:forward(im)
+			loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
+	
+			
+			n:backward(im, grad)
+			
+			return outputTable, loss, gp, p
+		end
 	end
 )
 
@@ -99,55 +133,74 @@ local pool = threads.Threads(nthread,
 
 begin_time = 0
 
-for i = 1, 1000000 do
-	local b1 = timer:time().real
-	
-	local samples = {}
-	
-	for i = 1, nthread do
-		local sample = loader:pick()
-		table.insert(samples, {img = sample.img, target = codec:encode(sample.gt)})
-	end
+state = {
+	learningRate = 1e-3,
+	momentum = 0.9
+}
 
+for i = 1, 1000000 do
+	local sample = loader:pick()
+	local im = sample.img
+	local target = codec:encode(sample.gt)
+	
+	
+	local idx = 1
 	local feval = function(params)
-		net:forget()
-		for i = 1, nthread do
-			pool:addjob(
+		local totalerr = 0
+		local totalgrad = nil
+		
+		for j = 1, nthread do
 			
+			
+			pool:addjob(
+				function(idx)
+					local im = im
+					local target = target
+					return eval(idx, im, target)
+				end,
+		
+				function(outputTable, err, gp, p)
+					totalerr = totalerr + err
+					
+					grad_params = grad_params + gp
+					
+					-- print("THREAD   " .. id)
+					
+					-- print("TARGET  " .. sample.gt)
+					-- print("OUTPUT  " .. decoder.best_path_decode(outputTable, codec))
+					-- print("LOSS    " .. err)
+					
+					
+				end,
+				idx
 			)
 		end
 		
+		pool:synchronize()
 		
-		
-		outputTable = net:forward(im)
-		loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
-		
-		if i % 1 == 0 then
-			print("")
-			show_log("EPOCH   " .. i)
-			show_log("TARGET  " .. sample.gt)
-			show_log("OUTPUT  " .. decoder.best_path_decode(outputTable, codec))
-			show_log("LOSS    " .. loss)
-			show_log("sec/ep  " .. (timer:time().real - begin_time) / i)
-		end
-		
-		if i % 10000 == 0 then
-			print("")
-			show_log("Saving model...")
-			local filename = string.format("umaru_model_%s_%d.uma", os.date("%y-%m-%d_%X"), i)
-			torch.save(filename, net:float())
-			show_log(string.format("Saving finished, saved model file is at %s.", filename))
-		end
 
-		net:backward(im, grad)
-		grad_params:cmul(grad_params:eq(grad_params):float())
-		grad_params:clamp(-1, 1)
-
-	
-		return loss, grad_params
+		-- print(grad_params)
+		
+		
+		-- grad_params:cmul(grad_params:eq(grad_params):float())
+		-- grad_params:clamp(-clamp_size, clamp_size)
+		
+		a = grad_params
+		
+		-- print(a)
+		
+		return totalerr, a
 	end
 	
+	-- print(grad_params)
+	
+	
+	-- orig = params:clone()
 	optim.sgd(feval, params, state)
+	-- net:zeroGradParameters()
+	-- print(torch.dist(orig, params))
 end
+
+pool:terminate()
 
 
