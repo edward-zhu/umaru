@@ -30,11 +30,17 @@ end
 
 -- settings
 
-DROPOUT_RATE = 0
+DROPOUT_RATE = 0.4
 GPU_ENABLED = false
 local input_size = 32
 local hidden_size = 100
 clamp_size = 5
+learning_rate = 1e-4
+momentum = 0.9
+
+-- threading
+
+local nthread = 3
 
 -- configuration
 training_list_file = "wwr.txt"
@@ -55,6 +61,8 @@ loader:load(training_list_file)
 local codec = loader:codec()
 
 show_log(string.format("Loading finished. Got %d samples, %d classes of characters.", #loader.samples, codec.codec_size))
+show_log(string.format("lr = %f, momentum = %.4f clamp = %.2f", learning_rate, momentum, clamp_size))
+show_log(string.format("using %d threads.", nthread))
 
 local class_num = codec.codec_size
 
@@ -93,22 +101,18 @@ a = "123"
 local orig = nil
 
 
--- threading
 
-local nthread = 3
 
 threads.serialization('threads.sharedserialize')
 
 local pool = threads(nthread, 
 	function(id)
-		print("new thread " .. id)
 		require 'nn'
 		require 'rnn'
 		require 'ctc_log'
 	end,
 	
 	function()
-		print("function()")
 		torch.setdefaulttensortype('torch.FloatTensor')
 		local n = net:clone()
 		local p, gp = n:getParameters()
@@ -121,6 +125,7 @@ local pool = threads(nthread,
 		function eval(id, ps, im, target)
 			-- n:zeroGradParameters()
 			p:copy(ps)
+			n:forget()
 			-- print(p:sum())
 			outputTable = n:forward(im)
 			loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
@@ -137,8 +142,8 @@ local pool = threads(nthread,
 begin_time = 0
 
 state = {
-	learningRate = 1e-4,
-	momentum = 0.9
+	learningRate = learning_rate,
+	momentum = momentum
 }
 
 
@@ -147,12 +152,8 @@ for i = 1, 1000000 do
 	local totalerr = 0
 	local totalgrad = nil
 	
-	
-	
-	net:zeroGradParameters()
-	
 	local feval = function(params)
-		
+		grad_params:zero()
 		
 		for j = 1, nthread do
 			local sample = loader:pick()
@@ -170,31 +171,32 @@ for i = 1, 1000000 do
 				function(out, loss, gp)
 					totalerr = totalerr + loss
 					
-					if j == 3 then
+					if i % 10 == 0 and j == 1 then
+						show_log("LOSS " .. loss)
+						print(sample.gt)
 						print(decoder.best_path_decode(out, codec))
+						print(string.format("%.2f sec/ep.", timer:time().real / (i * nthread)))
 					end
-				
+					
+					gp:cmul(gp:eq(gp):float())
+					gp:clamp(-clamp_size, clamp_size)
+					
+					-- print(gp:sum())
 					grad_params = grad_params + gp
-				
+						
 				end,
 				idx
 			)
 		end
 		
 		pool:synchronize()
-		
+
 		return totalerr, grad_params
 	end
 	
-	-- grad_params = grad_params / nthread
-	
-	grad_params:cmul(grad_params:eq(grad_params):float())
-	grad_params:clamp(-clamp_size, clamp_size)
-	
-	
-	
 	optim.sgd(feval, params, state)
-	show_log("LOSS " .. totalerr / nthread)
+	
+	
 end
 
 pool:terminate()
