@@ -32,15 +32,15 @@ DROPOUT_RATE = 0.4
 GPU_ENABLED = false
 local input_size = 32
 local hidden_size = 100
-clamp_size = 10
+clamp_size = 1
 
-show_every = 0
+show_every = 1
 save_every = 10000
 test_every = 1000
 ctc_lua = false
 
 -- configuration
-training_list_file = "1.txt"
+training_list_file = "wwr.txt"
 using_model_file = nil
 
 -- curriculum training settings
@@ -129,7 +129,7 @@ begin_time = 0
 
 
 for i = 1, 1000000 do
-	orig = params:clone()
+	
 	local b1 = timer:time().real
 	
 	local sample
@@ -221,9 +221,9 @@ for i = 1, 1000000 do
 
 		return loss, grad_params
 	end
-	
+	-- orig = params:clone()
 	optim.sgd(feval, params, state)
-	print(torch.dist(orig, params))
+	-- print(torch.dist(orig, params))
 	-- net:maxParamNorm(2)
 	
 	-- testing

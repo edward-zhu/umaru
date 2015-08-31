@@ -30,14 +30,14 @@ end
 
 -- settings
 
-DROPOUT_RATE = 0.4
+DROPOUT_RATE = 0
 GPU_ENABLED = false
 local input_size = 32
-local hidden_size = 200
+local hidden_size = 100
 clamp_size = 5
 
 -- configuration
-training_list_file = "1.txt"
+training_list_file = "wwr.txt"
 
 -- GPU
 
@@ -82,6 +82,7 @@ local params, grad_params
 
 params, grad_params = net:getParameters()
 
+
 state = {
 	learningRate = 1e-4,
 	momentum = 0.9
@@ -94,7 +95,7 @@ local orig = nil
 
 -- threading
 
-local nthread = 1
+local nthread = 3
 
 threads.serialization('threads.sharedserialize')
 
@@ -109,22 +110,24 @@ local pool = threads(nthread,
 	function()
 		print("function()")
 		torch.setdefaulttensortype('torch.FloatTensor')
-		local n = net:sharedClone(true, false)
+		local n = net:clone()
 		local p, gp = n:getParameters()
 		
-		print(n:get(4):get(1))
-
+		n:zeroGradParameters()
+		torch.manualSeed(450)
+		
 		local loss, grad
 		
-		function eval(id, im, target)
-
+		function eval(id, ps, im, target)
+			-- n:zeroGradParameters()
+			p:copy(ps)
+			-- print(p:sum())
 			outputTable = n:forward(im)
 			loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
-	
-			
 			n:backward(im, grad)
 			
-			return outputTable, loss, gp, p
+			-- print("loss " .. loss)
+			return outputTable, loss, gp
 		end
 	end
 )
@@ -134,43 +137,45 @@ local pool = threads(nthread,
 begin_time = 0
 
 state = {
-	learningRate = 1e-3,
+	learningRate = 1e-4,
 	momentum = 0.9
 }
 
+
+
 for i = 1, 1000000 do
-	local sample = loader:pick()
-	local im = sample.img
-	local target = codec:encode(sample.gt)
+	local totalerr = 0
+	local totalgrad = nil
 	
 	
-	local idx = 1
+	
+	net:zeroGradParameters()
+	
 	local feval = function(params)
-		local totalerr = 0
-		local totalgrad = nil
+		
 		
 		for j = 1, nthread do
-			
-			
+			local sample = loader:pick()
+			local im = sample.img
+			local target = codec:encode(sample.gt)
 			pool:addjob(
 				function(idx)
 					local im = im
 					local target = target
-					return eval(idx, im, target)
+					local ps = params
+					
+					return eval(idx, ps, im, target)
 				end,
-		
-				function(outputTable, err, gp, p)
-					totalerr = totalerr + err
+	
+				function(out, loss, gp)
+					totalerr = totalerr + loss
 					
+					if j == 3 then
+						print(decoder.best_path_decode(out, codec))
+					end
+				
 					grad_params = grad_params + gp
-					
-					-- print("THREAD   " .. id)
-					
-					-- print("TARGET  " .. sample.gt)
-					-- print("OUTPUT  " .. decoder.best_path_decode(outputTable, codec))
-					-- print("LOSS    " .. err)
-					
-					
+				
 				end,
 				idx
 			)
@@ -178,27 +183,18 @@ for i = 1, 1000000 do
 		
 		pool:synchronize()
 		
-
-		-- print(grad_params)
-		
-		
-		-- grad_params:cmul(grad_params:eq(grad_params):float())
-		-- grad_params:clamp(-clamp_size, clamp_size)
-		
-		a = grad_params
-		
-		-- print(a)
-		
-		return totalerr, a
+		return totalerr, grad_params
 	end
 	
-	-- print(grad_params)
+	-- grad_params = grad_params / nthread
+	
+	grad_params:cmul(grad_params:eq(grad_params):float())
+	grad_params:clamp(-clamp_size, clamp_size)
 	
 	
-	-- orig = params:clone()
+	
 	optim.sgd(feval, params, state)
-	-- net:zeroGradParameters()
-	-- print(torch.dist(orig, params))
+	show_log("LOSS " .. totalerr / nthread)
 end
 
 pool:terminate()

@@ -1,38 +1,36 @@
-local threads = require 'threads'
+require 'nn'
 
-local nthread = 4
-local njob = 10
-local msg = "hello from a satellite thread"
-local t = {1, 2, 3}
+net = nn.Linear(10, 10)
+
+params, grad_params = net:getParameters()
+
+n = net:clone()
+
+p, g = n:getParameters()
+
+p = params
+
+net:share(n, 'weight', 'bias')
 
 
-local pool = threads.Threads(
-   nthread,
-   function(threadid)
-      print('starting a new thread/state number ' .. threadid)
-      gmsg = msg -- get it the msg upvalue and store it in thread state
-	  tt = torch.serialize(t)
-	  ttt = torch.deserialize(tt)
-   end
-)
+inp = torch.randn(10)
 
-local jobdone = 0
-for i=1,njob do
-   pool:addjob(
-      function()
-         print(string.format('%s -- thread ID is %x', gmsg, __threadid))
-         return __threadid
-      end,
+n:forward(inp)
 
-      function(id)
-         print(string.format("task %d finished (ran on thread ID %x)", i, id))
-         jobdone = jobdone + 1
-      end
-   )
-end
+grad = torch.randn(10)
 
-pool:synchronize()
+n:backward(inp, grad)
 
-print(string.format('%d jobs done', jobdone))
+n:updateParameters(1e-3)
 
-pool:terminate()
+print(p:sum())
+print(params:sum())
+
+
+
+
+
+
+
+
+
