@@ -244,6 +244,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	outputTable = ctc.__toMatrix(outputTable, class_num)
 	
 	-- print(outputTable)
+	
 
 	if torch.type(outputTable) ~= "torch.FloatTensor" then
 		outputTable = outputTable:float()

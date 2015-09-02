@@ -77,10 +77,6 @@ function GRU:buildModel()
 	concat:add(nn.Identity()):add(self.resetGate):add(self.updateGate)
 	
 	
-	-- input: {x , h}
-	-- output: {{x, h[t - 1]}, r, z}
-	
-	
 	cell:add(concat)
 	cell:add(nn.FlattenTable())
 	
@@ -136,4 +132,148 @@ function GRU:buildModel()
 
 	
 	return cell
+end
+
+function GRU:updateOutput(input)
+	local prevOutput, prevCell
+	if self.step == 1 then
+		prevOutput = self.zeroTensor
+		
+		assert(input:dim() == 1, "only support input with dimension == 1")
+		
+		self.zeroTensor:resize(self.outputSize):zero()
+	else
+		prevOutput = self.output
+	end
+	
+	local output
+	if self.train ~= false then
+		self:recycle()
+		local recurrentModule = self:getStepModule(self.step)
+		
+		-- print{input, prevOutput}
+		
+		output = recurrentModule:updateOutput{input, prevOutput}
+	else
+		output = self.recurrentModule:updateOutput{input, prevOutput}
+	end
+	
+	if self.train ~= false then
+		local input_ = self.inputs[self.step]
+		self.inputs[self.step] = self.copyInputs
+			and nn.rnn.recursiveCopy(input_, input)
+			or nn.rnn.recursiveSet(input_, input)
+	end
+	
+	self.outputs[self.step] = output
+	
+	self.output = output
+	
+	self.step = self.step + 1
+	self.gradParametersAccumulated = false
+	
+	return self.output
+end
+
+function GRU:backwardThroughTime()
+	assert(self.step > 1, "expecting at least one updateOutput")
+	self.gradInputs = {}
+	local rho = math.min(self.rho, self.step - 1)
+	local stop = self.step - rho
+	if self.fastBackward then
+		local gradPrevOutput
+		for step = self.step - 1, math.max(stop, 1), -1 do
+			local recurrentModule = self:getStepModule(step)
+			
+			local gradOutput= self.gradOutputs[step]
+			if gradPrevOutput then
+				self._gradOutputs[step] = nn.rnn.recursiveCopy(self._gradOutputs[step], gradPrevOutput)
+				nn.rnn.recursiveAdd(self._gradOutputs[step], gradOutput)
+				gradOutput = self._gradOutputs[step]
+			end
+			
+			local scale = self.scales[step]
+			local output = (step == 1) and self.zeroTensor or self.outputs[step - 1]
+			
+			local inputTable = {self.inputs[step], output}
+			local gradInputTable = recurrentModule:backward(inputTable, gradOutput, scale)
+			
+			local gradInput, gradPrevOutput = unpack(gradInputTable)
+			
+			table.insert(self.gradInputs, 1, gradInput)
+		end
+		return gradInput
+	else
+		local gradInput = self:updateGradInputThroughTime()
+		self:accGradParametersThroughTime()
+		return gradInput
+	end
+end
+
+function GRU:updateGradInputThroughTime()
+	assert(self.step > 1, "expecting at least one updateOutput")
+	self.gradInputs = {}
+	local gradInput, gradPrevOutput
+	local rho = math.min(self.rho, self.step - 1)
+	local stop = self.step - rho
+	
+	for step = self.step - 1, math.max(stop, 1), -1 do
+		local recurrentModule = self:getStepModule(step)
+		
+		local gradOutput = self.gradOutputs[step]
+		if gradPrevOutput then
+			self._gradOutputs[step] = nn.rnn.recursiveCopy(self._gradOutputs[step], gradPrevOutput)
+			nn.rnn.recursiveAdd(self._gradOutputs[step], gradOutput)
+			gradOutput = self._gradOutputs[step]
+		end
+		
+		local output = (step == 1) and self.zeroTensor or self.outputs[step - 1]
+		local inputTable = {self.inputs[step], output}
+		local gradInputTable = recurrentModule:updateGradInput(inputTable, gradOutput)
+		
+		gradInput, gradPrevOutput = unpack(gradInputTable)
+		
+		table.insert(self.gradInputs, 1, gradInput)
+	end
+	
+	return gradInput
+end
+
+function GRU:accGradParametersThroughTime()
+	local rho = math.min(self.rho, self.step - 1)
+	local stop = self.step - rho
+	for step = self.step - 1, math.max(stop, 1), -1 do
+		local recurrentModule = self:getStepModule(step)
+		
+		local scale = self.scales[step]
+		local output = (step == 1) and self.zeroTensor or self.outputs[step - 1]
+		local inputTable = {self.inputs[step], output}
+		local gradOutput = (step == self.step - 1) and self.gradOutputs[step] or self._gradOutputs[step]
+		
+		
+		
+		recurrentModule:accGradParameters(inputTable, gradOutput, scale)
+	end
+	
+	self.gradParametersAccumulated = true
+	return gradInput
+end
+
+function GRU:accUpdateGradParametersThroughTime(lr)
+	local rho = math.min(self.rho, self.step - 1)
+	local stop = self.step - rho
+	
+	for step = self.step - 1, math.max(stop, 1), -1 do
+		local recurrentModule = self:getStepModule(step)
+		
+		local scale = self.scales[step]
+		local output = (step == 1) and self.zeroTensor or self.outputs[step - 1]
+		local inputTable = {self.inputs[step], output}
+		local gradOutput = (step == self.step - 1) and self.gradOutputs[step] or self._gradOutputs[step]
+		local gradOutputTable = {self.gradOutputs[step]}
+		
+		recurrentModule:accUpdateGradParameters(inputTable, gradOutput, lr * scale)
+	end
+	
+	return gradInput
 end

@@ -77,7 +77,6 @@ lfs.mkdir("models/" .. opt.project_name)
 
 json.save(project_dir .. "settings.json", opt)
 
-
 -- GPU
 
 if opt.gpu then

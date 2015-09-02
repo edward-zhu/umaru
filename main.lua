@@ -1,5 +1,6 @@
 require 'nn'
 require 'rnn'
+require 'GRU'
 require 'image'
 require 'optim'
 
@@ -29,11 +30,11 @@ end
 
 -- settings
 
-DROPOUT_RATE = 0.4
+DROPOUT_RATE = 0
 GPU_ENABLED = false
 local input_size = 32
 local hidden_size = 100
-clamp_size = 1
+clamp_size = 5
 
 show_every = 1
 save_every = 10000
@@ -41,7 +42,7 @@ test_every = 1000
 ctc_lua = false
 
 -- configuration
-training_list_file = "wwr.txt"
+training_list_file = "eng.txt"
 using_model_file = nil
 
 -- curriculum training settings
@@ -92,7 +93,7 @@ else
 	net:add(nn.Dropout(DROPOUT_RATE))
 	net:add(nn.SplitTable(1))
 	
-	lstm = nn.FastLSTM(input_size, hidden_size)
+	lstm = nn.GRU(input_size, hidden_size)
 	
 	net:add(nn.BiSequencer(lstm))
 	output = nn.Sequential()
