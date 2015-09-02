@@ -3,6 +3,7 @@ require 'rnn'
 require 'image'
 require 'optim'
 
+require 'json'
 require 'loader'
 require 'ctc_log'
 require 'utils.decoder'

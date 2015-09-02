@@ -4,6 +4,10 @@ build/*
 ctc/*
 normalizer/*
 
+models/*
+*.txt~
+*~
+
 *.txt
 *.codec
 !CMakeLists.txt
