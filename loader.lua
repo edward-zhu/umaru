@@ -205,3 +205,9 @@ function Loader:codec()
 	
 	return self.codec_obj
 end
+
+function Loader:loadCodec(codec_file)
+	self.codec_obj = Codec(torch.load(codec_file))
+
+	return self.codec_obj
+end
