@@ -124,6 +124,37 @@ function Loader:load(file, rate)
 	-- return self.samples
 end
 
+function Loader:loadTesting(file)
+	local f = assert(io.open(file, "r"))
+	for line in f:lines() do
+		local src = line
+
+		if lfs.attributes(src, "size") < 200 then
+			print("found invalid sample " .. src)
+			goto continue
+		end
+
+		local gt = src:gsub("[.].*", ".gt.txt")
+		local cf = io.open(gt, "r")
+		local gt = cf:read("*line")
+		cf:close()
+		
+		for _, c, _ in utf8.iter(gt) do
+			if self.codec_table[c] == nil then
+				error("there is a character that shows in testing set but not in training set.")
+			end
+		end
+		
+		local sample = {src = src, gt = gt, img = nil}
+
+		table.insert(self.samples, sample)
+		table.insert(self.testing, sample)
+
+		::continue::
+	end
+	f:close()
+end
+
 function Loader:__pick(index, from)
 	from = from or "training"
 	

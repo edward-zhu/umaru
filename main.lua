@@ -55,8 +55,9 @@ opt = {
 
 	-- samples
 	training_list_file = "1.txt",
+	testing_list_file = "1.txt",
 	codec_file = nil,
-	testing_ratio = 0.8,
+	testing_ratio = 0.8, -- is valid unless testing_list_file == nil
 
 	-- miscellaneous
 	max_iter = 1e10,
@@ -117,7 +118,13 @@ show_log("Loading samples...")
 loader = Loader()
 loader:targetHeight(opt.input_size)
 
-loader:load(opt.training_list_file, opt.testing_ratio)
+if opt.testing_list_file ~= nil then
+	loader:load(opt.training_list_file, 1)
+	loader:loadTesting(opt.testing_list_file)
+else
+	loader:load(opt.training_list_file, opt.testing_ratio)
+end
+
 
 -- load codec
 
