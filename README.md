@@ -11,7 +11,7 @@ Nevertheless, it might be a good start if you are new to torch or RNN.
 
 ## Dependencies
 
-- [torch](https://github.com/torch/torch7) (and following package)
+- [torch](https://github.com/torch/torch7) (and following packages)
 - image
 - nn/cunn
 - optim
@@ -25,7 +25,7 @@ Nevertheless, it might be a good start if you are new to torch or RNN.
 - or if you want to choose to use a JSON-format configuration file. An example shows below, and you can use it by execute.
 
 ```sh
-$ th main -setting [setting file]
+$ th main.lua -setting [setting file]
 ```
 
 ## Example Configuration File
