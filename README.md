@@ -3,7 +3,7 @@ An OCR-system based on torch using the technique of LSTM/GRU-RNN, CTC and referr
 
 ## Notice
 
-This work is now completely INSTABLE, EXPERIMENTAL and UNDER DEVELOPMENT.
+This work is now completely UNSTABLE, EXPERIMENTAL and UNDER DEVELOPMENT.
 
 For some reason it **can not reach the correct rate of clstm**, I am trying to figure it out (if u have any idea, PLEASE tell me.)
 
@@ -32,7 +32,7 @@ $ th main -setting [setting file]
 
 ```json
 {
-    "clamp_size": 1,
+    "clamp_size": 1,    // clip the gradient
     "ctc_lua": false,
     "dropout_rate": 0,
     "gpu": false,
@@ -45,11 +45,12 @@ $ th main -setting [setting file]
     "nthread": 3,
     "omp_threads": 1,
     "project_name": "GRU_testing_on_wwr",
-    "recurrent_unit": "gru",
+    "recurrent_unit": "gru",    // valid recurrent_unit is {gru, lstm, lstm_nopeephole}
     "save_every": 10000,
     "show_every": 10,
     "test_every": 1000,
-    "testing_ratio": 1,
-    "training_list_file": "wwr.txt"
+    "testing_ratio": 1, // how much do you want to use for validating? (it would be ignored if you have set a seperate testing_list_file)
+    "training_list_file": "wwr.txt", // input training list, 
+    "testing_list_file": "test.txt" // (optional) set it if you want to use a seperate testing set, or the testing(validating) set is part of your training set.
 }
 ```
