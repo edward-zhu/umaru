@@ -8,7 +8,7 @@ extern "C" {
 #include <iostream>
 #include <vector>
 
-#define ENABLE_OPENMP
+// #define ENABLE_OPENMP
 
 static const float EXP_MAX		= 1e10;
 static const float EXP_MIN		= 1e-10;
@@ -100,8 +100,8 @@ static THFloatTensor * __get_forward_variable(THFloatTensor * outputTable, THFlo
 		}
 		
 		lower_bound = L - 2 * (T - i);
-		if (lower_bound < 1) {
-			lower_bound = 1;
+		if (lower_bound < 0) {
+			lower_bound = 0;
 		}
 
 		assert(lower_bound >= 0 && lower_bound < T * L);
@@ -160,8 +160,8 @@ static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFl
 		}
 		
 		lower_bound = 2 * i + 1;
-		if (lower_bound > L - 2) {
-			lower_bound = L - 2;
+		if (lower_bound > L - 1) {
+			lower_bound = L - 1;
 		}
 		
 		if (lower_bound < 0) {
@@ -183,7 +183,6 @@ static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFl
 			
 			assert((i * L + u < T * L) && (i * L + u) >= 0);
 			assert(((i + 1) * L + u) >= 0 && ((i + 1) * L + u) < T * L);
-			assert(((i + 1) * L + u + 1) >= 0 && ((i + 1) * L + u + 1) < T * L);
 			assert((u >= L - 1) || ((i + 1) * L + u + 1 >= 0 && ((i + 1) * L + u + 1 < T * L)));
 			assert(!(u < L - 2 && target[u + 2] != target[u]) || ((i + 1) * L + u + 2) >= 0 && ((i + 1) * L + u + 2) < T * L);
 
@@ -201,7 +200,7 @@ static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFl
 			
 			bvs[i * L + u] = tmp;
 			
-			if ((i + 1) * L + u + 1 >= T * L) {
+			if ((u < L - 1) && (i + 1) * L + u + 1 >= T * L) {
 				perror("out of range\n");
 			}
 		}

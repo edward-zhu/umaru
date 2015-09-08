@@ -1,5 +1,6 @@
 require 'nn'
 require 'rnn'
+require 'GRU'
 require 'image'
 require 'optim'
 
@@ -28,12 +29,12 @@ end
 
 -- settings
 
-GPU_ENABLED = true
-local input_size = 32
+GPU_ENABLED = false
+local input_size = 48
 
 -- configuration
 list_file = "wwr.txt"
-using_model_file = "umaru_model_15-08-24_09:12:13_210000.uma"
+using_model_file = "umaru_model_15-09-03_17:21:52_10000.uma"
 
 -- GPU
 
@@ -48,6 +49,7 @@ show_log("Loading samples...")
 
 loader = Loader()
 loader:load(list_file)
+loader:targetHeight(input_size)
 codec = loader:codec()
 
 show_log(string.format("Loading finished. Got %d samples, %d classes of characters.", #loader.samples, codec.codec_size))

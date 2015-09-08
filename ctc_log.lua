@@ -271,12 +271,12 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 		-- outputTable: Tx(cls+1)
 		-- target: L'x(cls+1) --> targetT : (cls+1)xL'
 		-- alienged_table = TxL'
-		
-		
-		
-	local tmp = targetMatrix:t()
+
 	
-	local alignedTable = outputTable * tmp
+	local alignedTable = outputTable * targetMatrix:float():t()
+
+
+
 	
 	-- calculate forwardVariable (in log space)
 	
@@ -289,6 +289,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	else
 		fvs = libctc.get_forward_variable(outputTable, alignedTable, targetClasses)
 	end
+	
 	
 	
 	

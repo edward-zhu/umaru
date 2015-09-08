@@ -43,7 +43,7 @@ opt = {
 	clamp_size = 1,
 	learning_rate = 1e-4,
 	momentum = 0.9,
-	dropout_rate = 0.5,
+	dropout_rate = 0,
 	max_param_norm = false,
 
 	-- configurations
@@ -55,13 +55,13 @@ opt = {
 
 	-- samples
 	training_list_file = "1.txt",
-	testing_list_file = "1.txt",
+	testing_list_file = nil,
 	codec_file = nil,
-	testing_ratio = 0.8, -- is valid unless testing_list_file == nil
+	testing_ratio = 1, -- is valid unless testing_list_file == nil
 
 	-- miscellaneous
 	max_iter = 1e10,
-	show_every = 0,
+	show_every = 10,
 	save_every = 10000,
 	test_every = 1000,
 	ctc_lua = false,

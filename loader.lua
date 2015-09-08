@@ -68,15 +68,22 @@ function Loader:__getNormalizedImage(src)
 		im = im[1]
 	end
 
-	output = torch.DoubleTensor()
+	local output = torch.DoubleTensor()
 
-	w = im:size()[2]
-	h = im:size()[1]
+	local w = im:size()[2]
+	local h = im:size()[1]
 
-	ones = torch.ones(h, w)
+	local ones = torch.ones(h, w)
 
 	im = ones - im
 	normalizer.normalize(im:double(), output, self.target_height)
+	-- image.save("normalized.png", output:float())
+
+	--local target_width = self.target_height / h * w
+
+	--output = image.scale(im, target_width, self.target_height)
+
+	-- image.save("scaled.png", output)
 	return output:float()
 end
 
@@ -213,7 +220,7 @@ function Loader:reset()
 end
 
 function Loader:pickInSequential(from)
-	from = from or "sample"
+	from = from or "samples"
 	if self.pos <= #self[from] then
 		self.pos = self.pos + 1
 		return self:__pick(self.pos - 1, from)
