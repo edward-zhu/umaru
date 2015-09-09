@@ -84,7 +84,7 @@ function Loader:__getNormalizedImage(src)
 	--output = image.scale(im, target_width, self.target_height)
 
 	-- image.save("scaled.png", output)
-	return output:float()
+	return output
 end
 
 function Loader:load(file, rate)

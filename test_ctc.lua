@@ -4,7 +4,7 @@ require 'ctc_log'
 
 
 
-torch.setdefaulttensortype('torch.FloatTensor')
+torch.setdefaulttensortype('torch.DoubleTensor')
 
 outputTable = torch.Tensor{
 	{0.0684907, 0.0683173, 0.0682402, 0.0682124, 0.0682041, 0.068242, 0.0682717},
@@ -34,38 +34,35 @@ end
 
 -- outputTable = nn.Log():forward(outputTable:t())
 
-outputTable = nn.SplitTable(1):forward(outputTable:t())
+nrow = outputTable:size(2)
 
-ctc_lua = true
+splitedOutputTable = nn.SplitTable(1):forward(outputTable:t())
 
-print("running LUA VERSION ...")
+c_pzx, c_grad = ctc.getCTCCostAndGrad(splitedOutputTable, target)
 
-timer = torch.Timer()
-local base = 0
-
+c_m = toMatrix(c_grad):float()
 
 
-lua_pzx, lua_grad = ctc.getCTCCostAndGrad(outputTable, target)
-
-print("LUA VERSION finished in " .. timer:time().real - base  .. " s.")
-base = timer:time().real
+eps = 1e-6
 
 ctc_lua = false
-print("running C VERSION ...")
 
-c_pzx, c_grad = ctc.getCTCCostAndGrad(outputTable, target)
+est_grad = torch.Tensor(nrow)
 
-print("C VERSION finished in " .. timer:time().real - base  .. " s.")
+for i = 1, nrow do
+	outputTable[1][i] = outputTable[1][i] + eps
 
-lua_m = toMatrix(lua_grad)
-c_m = toMatrix(c_grad)
+	splitedOutputTable = nn.SplitTable(1):forward(outputTable:t())
+	loss1, _ = ctc.getCTCCostAndGrad(splitedOutputTable, target)
 
-print("dist = " .. torch.dist(lua_m, c_m))
-
-if (torch.dist(lua_m, c_m) < 1e-3) then
-	print("PASS!")
-else
-	print("FAILED.")
+	outputTable[1][i] = outputTable[1][i] - 2 * eps
+	splitedOutputTable = nn.SplitTable(1):forward(outputTable:t())
+	loss2, _ = ctc.getCTCCostAndGrad(splitedOutputTable, target)
+	
+	est_grad[i] = (loss1 - loss2) / eps
 end
+
+print(est_grad)
+
 
 

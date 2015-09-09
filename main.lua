@@ -11,7 +11,7 @@ require 'utils.decoder'
 require 'utils.levenshtein'
 
 -- initialize
-torch.setdefaulttensortype('torch.FloatTensor')
+torch.setdefaulttensortype('torch.DoubleTensor')
 torch.manualSeed(os.time())
 
 -- debug switch
@@ -172,7 +172,7 @@ else
 	output:add(nn.Linear(opt.hidden_size * 2, class_num + 1))
 	output:add(nn.SoftMax())
 	net:add(nn.Sequencer(output))
-	net:float()
+	net:double()
 end
 
 if opt.gpu then
@@ -226,6 +226,8 @@ for i = 1, 1000000 do
 	local feval = function(params)
 		net:forget()
 
+
+
 		outputTable = net:forward(im)
 		
 		loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
@@ -241,7 +243,7 @@ for i = 1, 1000000 do
 
 		net:backward(im, grad)
 
-		grad_params:cmul(grad_params:eq(grad_params):float())
+		grad_params:cmul(grad_params:eq(grad_params):double())
 		grad_params:clamp(-opt.clamp_size, opt.clamp_size)
 		
 

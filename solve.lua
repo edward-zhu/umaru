@@ -34,7 +34,7 @@ local input_size = 48
 
 -- configuration
 list_file = "wwr.txt"
-using_model_file = "umaru_model_15-09-03_17:21:52_10000.uma"
+using_model_file = "umaru_model_15-09-09_07:26:31_60000.uma"
 
 -- GPU
 

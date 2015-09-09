@@ -246,8 +246,8 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	-- print(outputTable)
 	
 
-	if torch.type(outputTable) ~= "torch.FloatTensor" then
-		outputTable = outputTable:float()
+	if torch.type(outputTable) ~= "torch.DoubleTensor" then
+		outputTable = outputTable:double()
 	end
 	
 	outputTable = outputTable:cmax(1e-4)
@@ -273,7 +273,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 		-- alienged_table = TxL'
 
 	
-	local alignedTable = outputTable * targetMatrix:float():t()
+	local alignedTable = outputTable * targetMatrix:double():t()
 
 
 
@@ -311,8 +311,6 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	print_timestamp("	fw bw")
 	
 	fb = fvs + bvs
-	
-	
 
 	-- calculate gradient matrix (Tx(cls+1))
 	if ctc_lua then

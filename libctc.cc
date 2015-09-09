@@ -10,17 +10,14 @@ extern "C" {
 
 // #define ENABLE_OPENMP
 
-static const float EXP_MAX		= 1e10;
-static const float EXP_MIN		= 1e-10;
-static const float LOG_ZERO		= -1e10;
-static const float LOG_INF		= 1e10;
-static const float EXP_LIMIT	= log(EXP_MAX);
+static const double EXP_MAX		= 1e100;
+static const double EXP_MIN		= 1e-100;
+static const double LOG_ZERO	= -1e100;
+static const double LOG_INF		= 1e100;
+static const double EXP_LIMIT	= log(EXP_MAX);
 
-static float inline fmax(float x, float y) {
-	return (x > y) ? x : y;
-}
 
-static float safe_log(float x) {
+static double safe_log(double x) {
 	if (x == 0) {
 		return LOG_ZERO;
 	}
@@ -33,7 +30,7 @@ static float safe_log(float x) {
 	}
 }
 
-static float safe_exp(float x) {
+static double safe_exp(double x) {
 	if (x == LOG_ZERO) {
 		return 0;
 	}
@@ -43,7 +40,7 @@ static float safe_exp(float x) {
 	return exp(x);
 }
 
-static float log_add(float x, float y) {
+static double log_add(double x, double y) {
 	if (fabs(x - y) > 10) {
 		fmax(x, y);
 	}
@@ -54,7 +51,7 @@ static float log_add(float x, float y) {
 	return x + log(1.0 + safe_exp(y - x));
 }
 
-static float log_sub(float x, float y) {
+static double log_sub(double x, double y) {
 	if (y == LOG_ZERO) {
 		return x;
 	}
@@ -64,7 +61,7 @@ static float log_sub(float x, float y) {
 	return x + log(1.0 - safe_exp(y - x));
 }
 
-static float log_mul(float x, float y) {
+static double log_mul(double x, double y) {
 	if (y == LOG_ZERO or x == LOG_ZERO) {
 		return LOG_ZERO;
 	}
@@ -72,24 +69,24 @@ static float log_mul(float x, float y) {
 	return x + y;
 }
 
-static THFloatTensor * __get_forward_variable(THFloatTensor * outputTable, THFloatTensor * alignedTable, THFloatTensor * targetT) {
+static THDoubleTensor * __get_forward_variable(THDoubleTensor * outputTable, THDoubleTensor * alignedTable, THDoubleTensor * targetT) {
 	int T = outputTable->size[0];
 	int L = targetT->size[0];
 	
-	float * aligned = THFloatTensor_data(alignedTable);
-	float * target = THFloatTensor_data(targetT);
+	double * aligned = THDoubleTensor_data(alignedTable);
+	double * target = THDoubleTensor_data(targetT);
 	
 	
-	THFloatTensor * fvsT = THFloatTensor_newWithSize2d(T, L);
-	THFloatStorage_fill(fvsT->storage, LOG_ZERO);
-	float * fvs = THFloatTensor_data(fvsT);
+	THDoubleTensor * fvsT = THDoubleTensor_newWithSize2d(T, L);
+	THDoubleStorage_fill(fvsT->storage, LOG_ZERO);
+	double * fvs = THDoubleTensor_data(fvsT);
 	
 	fvs[0] = aligned[0];
 	fvs[1] = aligned[1];
 	
 	int lower_bound = -1, upper_bound = 2;
 	
-	float fvs_tmp, fvs_i1u, fvs_i1u1, fvs_i1u2;
+	double fvs_tmp, fvs_i1u, fvs_i1u1, fvs_i1u2;
 	
 	for(int i = 1; i < T; i++) {
 		// adjust bounds, some positions would never been visited
@@ -108,7 +105,7 @@ static THFloatTensor * __get_forward_variable(THFloatTensor * outputTable, THFlo
 		assert(upper_bound >= 0 && upper_bound < T * L);
 
 		for (int u = lower_bound; u < upper_bound; u++) {
-			float tmp = LOG_ZERO;
+			double tmp = LOG_ZERO;
 			
 			fvs_i1u = fvs[(i - 1) * L + u];
 			fvs_i1u1 = (u > 0) ? fvs[(i - 1) * L + u - 1] : LOG_ZERO;
@@ -130,16 +127,16 @@ static THFloatTensor * __get_forward_variable(THFloatTensor * outputTable, THFlo
 	return fvsT;
 }
 
-static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFloatTensor * alignedTable, THFloatTensor * targetT) {
+static THDoubleTensor * __get_backward_variable(THDoubleTensor * outputTable, THDoubleTensor * alignedTable, THDoubleTensor * targetT) {
 	int T = outputTable->size[0];
 	int L = targetT->size[0];
 	
-	float * aligned = THFloatTensor_data(alignedTable);
-	float * target = THFloatTensor_data(targetT);
+	double * aligned = THDoubleTensor_data(alignedTable);
+	double * target = THDoubleTensor_data(targetT);
 	
-	THFloatTensor * bvsT = THFloatTensor_newWithSize2d(T, L);
-	THFloatStorage_fill(bvsT->storage, LOG_ZERO);
-	float * bvs = THFloatTensor_data(bvsT);
+	THDoubleTensor * bvsT = THDoubleTensor_newWithSize2d(T, L);
+	THDoubleStorage_fill(bvsT->storage, LOG_ZERO);
+	double * bvs = THDoubleTensor_data(bvsT);
 	
 	assert(T * L >= 2);
 
@@ -148,7 +145,7 @@ static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFl
 	
 	int lower_bound = -1, upper_bound = L - 3;
 	
-	float bvs_tmp, bvs_i1u, bvs_i1u1, bvs_i1u2;
+	double bvs_tmp, bvs_i1u, bvs_i1u1, bvs_i1u2;
 	
 	
 	for(int i = T - 2; i >= 0; i--) {
@@ -179,7 +176,7 @@ static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFl
 		
 		for (int u = lower_bound; u >= upper_bound; u--) {
 			
-			float tmp = LOG_ZERO;
+			double tmp = LOG_ZERO;
 			
 			assert((i * L + u < T * L) && (i * L + u) >= 0);
 			assert(((i + 1) * L + u) >= 0 && ((i + 1) * L + u) < T * L);
@@ -210,7 +207,7 @@ static THFloatTensor * __get_backward_variable(THFloatTensor * outputTable, THFl
 }
 
 
-static THFloatTensor * __get_grad(THFloatTensor * fbT, THFloatTensor * outputTable, THFloatTensor * targetT, float pzx) {
+static THDoubleTensor * __get_grad(THDoubleTensor * fbT, THDoubleTensor * outputTable, THDoubleTensor * targetT, double pzx) {
 	
 	int T = fbT->size[0];
 	int L = targetT->size[0];
@@ -218,13 +215,13 @@ static THFloatTensor * __get_grad(THFloatTensor * fbT, THFloatTensor * outputTab
 	
 	int pos;
 	
-	THFloatTensor * gradT = THFloatTensor_newWithSize2d(T, class_num);
-	float * fb = THFloatTensor_data(fbT);
-	float * output = THFloatTensor_data(outputTable);
-	float * grad = THFloatTensor_data(gradT);
-	float * target = THFloatTensor_data(targetT);
+	THDoubleTensor * gradT = THDoubleTensor_newWithSize2d(T, class_num);
+	double * fb = THDoubleTensor_data(fbT);
+	double * output = THDoubleTensor_data(outputTable);
+	double * grad = THDoubleTensor_data(gradT);
+	double * target = THDoubleTensor_data(targetT);
 	
-	float tmp_sum = 0, u = 0, tmp = 0;
+	double tmp_sum = 0, u = 0, tmp = 0;
 
 	int t;
 
@@ -269,33 +266,33 @@ static THFloatTensor * __get_grad(THFloatTensor * fbT, THFloatTensor * outputTab
 }
 
 static int ctc_get_forward_variable(lua_State * L) {
-	THFloatTensor * output = (THFloatTensor *)luaT_checkudata(L, 1, "torch.FloatTensor");
-	THFloatTensor * alignedTable = (THFloatTensor *)luaT_checkudata(L, 2, "torch.FloatTensor");
-	THFloatTensor * target = (THFloatTensor *)luaT_checkudata(L, 3, "torch.FloatTensor");
+	THDoubleTensor * output = (THDoubleTensor *)luaT_checkudata(L, 1, "torch.DoubleTensor");
+	THDoubleTensor * alignedTable = (THDoubleTensor *)luaT_checkudata(L, 2, "torch.DoubleTensor");
+	THDoubleTensor * target = (THDoubleTensor *)luaT_checkudata(L, 3, "torch.DoubleTensor");
 	
 	
 	
-	THFloatTensor * fvs = __get_forward_variable(output, \
+	THDoubleTensor * fvs = __get_forward_variable(output, \
 													alignedTable, target);
 	
 												
-	luaT_pushudata(L, fvs, "torch.FloatTensor");
+	luaT_pushudata(L, fvs, "torch.DoubleTensor");
 	
 	return 1;											
 }
 
 static int ctc_get_backward_variable(lua_State * L) {
-	THFloatTensor * output = (THFloatTensor *)luaT_checkudata(L, 1, "torch.FloatTensor");
-	THFloatTensor * alignedTable = (THFloatTensor *)luaT_checkudata(L, 2, "torch.FloatTensor");
-	THFloatTensor * target = (THFloatTensor *)luaT_checkudata(L, 3, "torch.FloatTensor");
+	THDoubleTensor * output = (THDoubleTensor *)luaT_checkudata(L, 1, "torch.DoubleTensor");
+	THDoubleTensor * alignedTable = (THDoubleTensor *)luaT_checkudata(L, 2, "torch.DoubleTensor");
+	THDoubleTensor * target = (THDoubleTensor *)luaT_checkudata(L, 3, "torch.DoubleTensor");
 	
 	
 	
-	THFloatTensor * bvs = __get_backward_variable(output, \
+	THDoubleTensor * bvs = __get_backward_variable(output, \
 													alignedTable, target);
 	
 	/*
-	float * data = THFloatTensor_data(bvs);
+	double * data = THDoubleTensor_data(bvs);
 	
 	for (int i = 0; i < bvs->size[0]; i++) {
 		for (int j = 0; j < bvs->size[1]; j++) {
@@ -305,7 +302,7 @@ static int ctc_get_backward_variable(lua_State * L) {
 	}
 	*/
 									
-	luaT_pushudata(L, bvs, "torch.FloatTensor");
+	luaT_pushudata(L, bvs, "torch.DoubleTensor");
 	
 	return 1;											
 }
@@ -313,14 +310,14 @@ static int ctc_get_backward_variable(lua_State * L) {
 
 
 static int ctc_get_grad(lua_State * L) {
-	THFloatTensor * fb = (THFloatTensor *)luaT_checkudata(L, 1, "torch.FloatTensor");
-	THFloatTensor * outputTable = (THFloatTensor *)luaT_checkudata(L, 2, "torch.FloatTensor");
-	THFloatTensor * target = (THFloatTensor *)luaT_checkudata(L, 3, "torch.FloatTensor");
-	float pzx = luaL_checknumber(L, 4);
+	THDoubleTensor * fb = (THDoubleTensor *)luaT_checkudata(L, 1, "torch.DoubleTensor");
+	THDoubleTensor * outputTable = (THDoubleTensor *)luaT_checkudata(L, 2, "torch.DoubleTensor");
+	THDoubleTensor * target = (THDoubleTensor *)luaT_checkudata(L, 3, "torch.DoubleTensor");
+	double pzx = luaL_checknumber(L, 4);
 	
-	THFloatTensor * grad = __get_grad(fb, outputTable, target, pzx);
+	THDoubleTensor * grad = __get_grad(fb, outputTable, target, pzx);
 	
-	luaT_pushudata(L, grad, "torch.FloatTensor");
+	luaT_pushudata(L, grad, "torch.DoubleTensor");
 	
 	return 1;
 }
