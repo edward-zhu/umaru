@@ -5,7 +5,9 @@ An OCR-system based on torch using the technique of LSTM/GRU-RNN, CTC and referr
 
 This work is now completely UNSTABLE, EXPERIMENTAL and UNDER DEVELOPMENT.
 
-For some reason it **can not reach the correct rate of clstm**, I am trying to figure it out (if u have any idea, PLEASE tell me.)
+For some reason, it **might not reach the correct rate of clstm**, I am trying to figure it out (if u have any idea, PLEASE tell me :) )
+
+[UPDATE]
 
 Nevertheless, it might be a good start if you are new to torch or RNN.
 
@@ -21,8 +23,8 @@ Nevertheless, it might be a good start if you are new to torch or RNN.
 
 ## Usage
 
-- You can just change the settings in the `main.lua`, the input format is clstm-like (`.png` and `.gt.txt` pair) and you should put all input file path in a text file.
-- or if you want to choose to use a JSON-format configuration file. An example shows below, and you can use it by execute.
+- You can change the settings in the `main.lua` directly and execute `th main.lua`, the input format is clstm-like (`.png` and `.gt.txt` pair) and you should put all input file path in a text file.
+- or if you prefer to use a JSON-format configuration file. An example shows below, and you can use it by execute:
 
 ```sh
 $ th main.lua -setting [setting file]
