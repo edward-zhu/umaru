@@ -101,6 +101,12 @@ function Loader:load(file, rate)
 
 		local gt = src:gsub("[.].*", ".gt.txt")
 		local cf = io.open(gt, "r")
+
+		if cf == nil then
+			print("ground truth not found " .. gt)
+			goto continue
+		end
+
 		local gt = cf:read("*line")
 		cf:close()
 		
@@ -143,6 +149,12 @@ function Loader:loadTesting(file)
 
 		local gt = src:gsub("[.].*", ".gt.txt")
 		local cf = io.open(gt, "r")
+
+		if cf == nil then
+			print("found invalid sample " .. src)
+			goto continue
+		end
+
 		local gt = cf:read("*line")
 		cf:close()
 		

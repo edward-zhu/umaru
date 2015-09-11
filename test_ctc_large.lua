@@ -305,11 +305,16 @@ c_pzx, c_grad = ctc.getCTCCostAndGrad(splitedOutputTable, target)
 
 c_m = toMatrix(c_grad):float()
 
+print(c_m:t())
+
 print(torch.dist(c_m:t(), grad_contrast:float()))
 
 
-eps = 1e-5
 
+
+--[[
+
+eps = 1e-5
 ctc_lua = false
 
 est_grad = torch.Tensor(nrow)
@@ -328,3 +333,5 @@ for i = 1, nrow do
 end
 
 print(est_grad)
+]]
+

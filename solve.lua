@@ -34,7 +34,8 @@ local input_size = 48
 
 -- configuration
 list_file = "wwr.txt"
-using_model_file = "umaru_model_15-09-09_07:26:31_60000.uma"
+using_model_file = "umaru_model_15-09-10_21:51:30_30000.uma"
+using_codec = "full-train.codec"
 
 -- GPU
 
@@ -51,6 +52,10 @@ loader = Loader()
 loader:load(list_file)
 loader:targetHeight(input_size)
 codec = loader:codec()
+
+if using_codec then
+	codec = loader:loadCodec(using_codec)
+end
 
 show_log(string.format("Loading finished. Got %d samples, %d classes of characters.", #loader.samples, codec.codec_size))
 
