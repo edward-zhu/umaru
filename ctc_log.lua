@@ -249,10 +249,19 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	if torch.type(outputTable) ~= "torch.DoubleTensor" then
 		outputTable = outputTable:double()
 	end
+
+	orig = outputTable:clone()
 	
-	outputTable = outputTable:cmax(1e-4)
-	local total = outputTable:sum(2):expand(outputTable:size()[1], outputTable:size()[2])
-	outputTable = torch.cdiv(outputTable, total)
+	-- outputTable = outputTable:cmax(1e-4)
+	-- local total = outputTable:sum(2):expand(outputTable:size()[1], outputTable:size()[2])
+
+	-- print(total)
+
+	
+	-- outputTable = torch.cdiv(outputTable, total)
+
+	-- print(torch.dist(orig, outputTable))
+
 
 	print_timestamp("	perpare")
 	

@@ -8,7 +8,7 @@ extern "C" {
 #include <iostream>
 #include <vector>
 
-// #define ENABLE_OPENMP
+#define ENABLE_OPENMP
 
 static const double EXP_MAX		= 1e100;
 static const double EXP_MIN		= 1e-100;
@@ -188,8 +188,13 @@ static THDoubleTensor * __get_backward_variable(THDoubleTensor * outputTable, TH
 			bvs_i1u2 = (u < L - 2 && target[u + 2] != target[u]) ? bvs[(i + 1) * L + u + 2] : LOG_ZERO;
 			
 			tmp = log_mul(aligned[(i + 1) * L + u], bvs_i1u);
-			tmp = log_add(tmp, log_mul(aligned[(i + 1) * L + u + 1], bvs_i1u1));
 			
+			
+			if (u < L - 1) {
+				assert(((i + 1) * L + u + 1 >= 0) && ((i + 1) * L + u + 1 < T * L));
+				tmp = log_add(tmp, log_mul(aligned[(i + 1) * L + u + 1], bvs_i1u1));
+			}
+
 			if (u % 2 && u < L - 2) {
 				assert(((i + 1) * L + u + 2) >= 0 && ((i + 1) * L + u + 2) < T * L);
 				tmp = log_add(tmp, log_mul(aligned[(i + 1) * L + u + 2], bvs_i1u2));		

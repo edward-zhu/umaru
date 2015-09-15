@@ -32,7 +32,7 @@ end
 
 opt = {
 	-- project
-	project_name = os.date("%y-%m-%d_") .. torch.random() % 10000,
+	project_name = os.date("%y-%m-%d_%H%M%S"),
 	using_model_file = nil,
 
 	recurrent_unit = "gru",

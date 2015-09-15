@@ -297,6 +297,7 @@ end
 
 -- outputTable = nn.Log():forward(outputTable:t())
 
+T = outputTable:size(1)
 nrow = outputTable:size(2)
 
 splitedOutputTable = nn.SplitTable(1):forward(outputTable:t())
@@ -305,33 +306,35 @@ c_pzx, c_grad = ctc.getCTCCostAndGrad(splitedOutputTable, target)
 
 c_m = toMatrix(c_grad):float()
 
-print(c_m:t())
+-- print(c_m:t())
 
-print(torch.dist(c_m:t(), grad_contrast:float()))
-
-
+-- print(torch.dist(c_m:t(), grad_contrast:float()))
 
 
---[[
 
 eps = 1e-5
 ctc_lua = false
 
 est_grad = torch.Tensor(nrow)
 
-for i = 1, nrow do
-	outputTable[1][i] = outputTable[1][i] + eps
+for t = 1, T do
+	for i = 1, nrow do
+		outputTable[t][i] = outputTable[t][i] + eps
 
-	splitedOutputTable = nn.SplitTable(1):forward(outputTable:t())
-	loss1, _ = ctc.getCTCCostAndGrad(splitedOutputTable, target)
+		splitedOutputTable = nn.SplitTable(1):forward(outputTable:t())
+		loss1, _ = ctc.getCTCCostAndGrad(splitedOutputTable, target)
 
-	outputTable[1][i] = outputTable[1][i] - 2 * eps
-	splitedOutputTable = nn.SplitTable(1):forward(outputTable:t())
-	loss2, _ = ctc.getCTCCostAndGrad(splitedOutputTable, target)
-	
-	est_grad[i] = (loss1 - loss2) / eps
+		outputTable[t][i] = outputTable[t][i] - 2 * eps
+		splitedOutputTable = nn.SplitTable(1):forward(outputTable:t())
+		loss2, _ = ctc.getCTCCostAndGrad(splitedOutputTable, target)
+		
+
+		outputTable[t][i] = outputTable[t][i] + eps
+
+		est_grad[i] = (loss1 - loss2) / (2 * eps)
+
+		print(est_grad[i], grad_contrast[t][i])
+	end
 end
 
-print(est_grad)
-]]
 

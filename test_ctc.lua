@@ -58,8 +58,10 @@ for i = 1, nrow do
 	outputTable[1][i] = outputTable[1][i] - 2 * eps
 	splitedOutputTable = nn.SplitTable(1):forward(outputTable:t())
 	loss2, _ = ctc.getCTCCostAndGrad(splitedOutputTable, target)
+
+	outputTable[1][i] = outputTable[1][i] + eps
 	
-	est_grad[i] = (loss1 - loss2) / eps
+	est_grad[i] = (loss1 - loss2) / (2 * eps)
 end
 
 print(est_grad)
