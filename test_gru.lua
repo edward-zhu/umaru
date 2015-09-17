@@ -14,7 +14,7 @@ local output_ = torch.rand(20)
 print(module)
 print(module:forward({input, output_}))
 
-gru = GRU.gru(10, 20, 1)cl
+gru = GRU.gru(10, 20, 1)
 
 graph.dot(gru.fg, "GRU")
 
