@@ -5,9 +5,7 @@ An OCR-system based on torch using the technique of LSTM/GRU-RNN, CTC and referr
 
 This work is now completely UNSTABLE, EXPERIMENTAL and UNDER DEVELOPMENT.
 
-For some reason, it **might not reach the correct rate of clstm**, I am trying to figure it out (if u have any idea, PLEASE tell me :) )
-
-[UPDATE]
+[UPDATE] It finally works.
 
 Nevertheless, it might be a good start if you are new to torch or RNN.
 
