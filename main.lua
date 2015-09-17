@@ -1,6 +1,7 @@
 require 'nn'
 require 'rnn'
 require 'GRU'
+require 'slider'
 require 'image'
 require 'optim'
 require 'json'
@@ -54,17 +55,24 @@ opt = {
 	omp_threads = 1,
 
 	-- samples
-	training_list_file = "1.txt",
+	training_list_file = "wwr.txt",
 	testing_list_file = nil,
 	codec_file = nil,
 	testing_ratio = 1, -- is valid unless testing_list_file == nil
+
+	-- fancy network
+	raw_input = false,
+	windows_size = 10,
+	stride = 5,
+	feature_size = 48 * 5,
 
 	-- miscellaneous
 	max_iter = 1e10,
 	show_every = 10,
 	save_every = 10000,
 	test_every = 1000,
-	ctc_lua = false,
+	ctc_lua = false
+	
 }
 
 -- load settings
@@ -152,18 +160,27 @@ local net, recurrent
 if opt.using_model_file then
 	net = torch.load(opt.using_model_file)
 else
+	local rnn_input_size = opt.input_size
+	
 	net = nn.Sequential()
 
-	net:add(nn.SplitTable(1))
+	if (opt.raw_input) then
+		net:add(nn.SplitTable(1))
+	else
+		local raw_input_size = opt.windows_size * opt.input_size
+		rnn_input_size = opt.feature_size
+		net:add(nn.Sequencer(nn.Linear(raw_input_size, opt.feature_size)))
+	end
 	
+
 	if opt.recurrent_unit == "gru" then
-		recurrent = nn.GRU(opt.input_size, opt.hidden_size)
+		recurrent = nn.GRU(rnn_input_size, opt.hidden_size)
 	elseif opt.recurrent_unit == "lstm" then
-		recurrent = nn.LSTM(opt.input_size, opt.hidden_size)
+		recurrent = nn.LSTM(rnn_input_size, opt.hidden_size)
 	elseif opt.recurrent_unit == "lstm_nopeephole" then
-		recurrent = nn.LSTM(opt.input_size, opt.hidden_size, 9999, false)
+		recurrent = nn.LSTM(rnn_input_size, opt.hidden_size, 9999, false)
 	elseif opt.recurrent_unit == "lstm_fast" then
-		recurrent = nn.FastLSTM(opt.input_size, opt.hidden_size)
+		recurrent = nn.FastLSTM(rnn_input_size, opt.hidden_size)
 	end
 
 	net:add(nn.BiSequencer(recurrent))
@@ -226,9 +243,18 @@ for i = 1, 1000000 do
 	local feval = function(params)
 		net:forget()
 
+		local input
 
+		if opt.raw_input then
+			input = im
+		else
+			slider = Slider()
+			slider:load(im:t())
+			input = slider:genSequence()
 
-		outputTable = net:forward(im)
+		end
+
+		outputTable = net:forward(input)
 		
 		loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
 		
@@ -241,7 +267,7 @@ for i = 1, 1000000 do
 			show_log("sec/ep  " .. (timer:time().real - begin_time) / i)
 		end
 
-		net:backward(im, grad)
+		net:backward(input, grad)
 
 		grad_params:cmul(grad_params:eq(grad_params):double())
 		grad_params:clamp(-opt.clamp_size, opt.clamp_size)

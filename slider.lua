@@ -52,10 +52,25 @@ function Slider:slide()
 		ret[{{1, self.height}, {1, self.width - _start + 1}}] = self.im[{{1, self.height}, {_start, self.width}}]
 
 	else
-		ret = self.im[{{1, self.height}, {_start, _start + self.win_width}}]
+		ret = self.im[{{1, self.height}, {_start, _start + self.win_width - 1}}]
 	end
 
 	self.pos = self.pos + 1
 
 	return ret
+end
+
+function Slider:genSequence()
+	local seq = {}
+
+	local s = self:slide()
+
+	while s do
+		s = s:reshape(s:nElement())
+
+		table.insert(seq, s)
+		s = self:slide()
+	end
+
+	return seq
 end
