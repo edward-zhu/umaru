@@ -55,7 +55,7 @@ opt = {
 	omp_threads = 1,
 
 	-- samples
-	training_list_file = "zhn100.txt",
+	training_list_file = "wwr.txt",
 	testing_list_file = nil,
 	codec_file = nil,
 	testing_ratio = 1, -- is valid unless testing_list_file == nil
@@ -65,6 +65,7 @@ opt = {
 	windows_size = 10,
 	stride = 5,
 	feature_size = 48 * 5,
+	rbm_network_file =  "rbm/wwr.rbm",
 
 	-- miscellaneous
 	max_iter = 1e10,
@@ -169,7 +170,17 @@ else
 	else
 		local raw_input_size = opt.windows_size * opt.input_size
 		rnn_input_size = opt.feature_size
-		net:add(nn.Sequencer(nn.Linear(raw_input_size, opt.feature_size)))
+
+		local lienar_layer = nn.Linear(raw_input_size, opt.feature_size)
+
+		if (opt.rbm_network_file) then
+			show_log("loading RBM nerwork...")
+			local rbm = torch.load(opt.rbm_network_file)
+			show_log(string.format("loaded RBM Layer with n_visual=%d, n_hidden=%d.", rbm.n_visible, rbm.n_hidden))
+			linear_layer = rbm.encoder
+		end
+
+		net:add(nn.Sequencer(linear_layer))
 	end
 	
 
@@ -211,6 +222,21 @@ show_log(string.format("Start training. umaru~~"))
 
 begin_time = 0
 
+get_input = function(im)
+	local int
+	if opt.raw_input then
+		input = im
+	else
+		slider = Slider()
+		slider:load(im:t())
+		input = slider:genSequence()
+
+	end
+
+	return input
+end
+
+
 for i = 1, 1000000 do
 	
 	local b1 = timer:time().real
@@ -243,16 +269,9 @@ for i = 1, 1000000 do
 	local feval = function(params)
 		net:forget()
 
-		local input
+		local input = get_input(im)
 
-		if opt.raw_input then
-			input = im
-		else
-			slider = Slider()
-			slider:load(im:t())
-			input = slider:genSequence()
 
-		end
 
 		outputTable = net:forward(input)
 		
@@ -266,6 +285,8 @@ for i = 1, 1000000 do
 			show_log("LOSS    " .. loss)
 			show_log("sec/ep  " .. (timer:time().real - begin_time) / i)
 		end
+
+
 
 		net:backward(input, grad)
 
@@ -309,7 +330,10 @@ for i = 1, 1000000 do
 			else
 				im = s.img
 			end
-			local out = decoder.best_path_decode(net:forward(im), codec)
+
+			local input = get_input(im)
+
+			local out = decoder.best_path_decode(net:forward(input), codec)
 			dist = dist + utf8.levenshtein(s.gt, out)
 			len = len + utf8.len(s.gt)
 			

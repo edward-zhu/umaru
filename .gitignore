@@ -7,6 +7,8 @@ normalizer/*
 models/*
 experiments/*
 
+rbm/*
+*.rbm
 *.json
 *.txt~
 *~

@@ -61,7 +61,8 @@ function Loader:targetHeight(target_height)
 end
 
 function Loader:__getNormalizedImage(src)
-	
+	local defaultTensorType = torch.getdefaulttensortype()
+	torch.setdefaulttensortype('torch.DoubleTensor')
 	local im = image.load(src, 1)
 
 	if im:dim() == 3 then
@@ -84,6 +85,7 @@ function Loader:__getNormalizedImage(src)
 	--output = image.scale(im, target_width, self.target_height)
 
 	-- image.save("scaled.png", output)
+	torch.setdefaulttensortype(defaultTensorType)
 	return output
 end
 
@@ -160,7 +162,7 @@ function Loader:loadTesting(file)
 		
 		for _, c, _ in utf8.iter(gt) do
 			if self.codec_table[c] == nil then
-				error("there is a character that shows in testing set but not in training set.")
+				print("there is a character that shows in testing set but not in training set.")
 			end
 		end
 		
@@ -235,7 +237,7 @@ function Loader:pickInSequential(from)
 	from = from or "samples"
 	if self.pos <= #self[from] then
 		self.pos = self.pos + 1
-		return self:__pick(self.pos - 1, from)
+		return self:__pick(self.pos - 1, from), self.pos - 1, #self[from]
 	else
 		return nil
 	end

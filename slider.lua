@@ -30,7 +30,7 @@ function Slider:load(im)
 	self.height = im:size(1)
 	self.width = im:size(2)
 
-	self.total = self.width / self.stride -- total # of windows
+	self.total = math.ceil(self.width / self.stride) -- total # of windows
 
 	self.pos = 0
 	self.im = im
@@ -50,9 +50,9 @@ function Slider:slide()
 	if _end > self.width then
 		ret = torch.zeros(self.height, self.win_width)
 		ret[{{1, self.height}, {1, self.width - _start + 1}}] = self.im[{{1, self.height}, {_start, self.width}}]
-
 	else
 		ret = self.im[{{1, self.height}, {_start, _start + self.win_width - 1}}]
+
 	end
 
 	self.pos = self.pos + 1
