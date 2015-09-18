@@ -55,7 +55,7 @@ opt = {
 	omp_threads = 1,
 
 	-- samples
-	training_list_file = "wwr.txt",
+	training_list_file = "zhn100.txt",
 	testing_list_file = nil,
 	codec_file = nil,
 	testing_ratio = 1, -- is valid unless testing_list_file == nil
