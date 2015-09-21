@@ -75,3 +75,11 @@ descriptions for each option could be found in `main.lua`.
 ## LICENSE
 
 BSD 3-Clause License
+
+## References
+
+[1] [Empirical Evaluation of Gated Recurrent Neural Networks on Sequence Modeling, Junyoung Chung, et al.](http://arxiv.org/abs/1412.3555)
+[2] [Connectionist Temporal Classification: Labelling Unsegmented Sequence Data with Recurrent Neural Networks, Alex Graves, et al.](ftp://ftp.idsia.ch/pub/juergen/icml2006.pdf)
+[3] [RNNLIB: Connectionist Temporal Classification and Transcription Layer, Wang Jian](http://wantee.github.io/blog/2015/02/08/rnnlib-connectionist-temporal-classification-and-transcription-layer/)
+[4] [rnnlib, Alex Graves](http://sourceforge.net/p/rnnl/wiki/Home/)
+[5] [clstm, tmbdev](https://github.com/tmbdev/clstm)
