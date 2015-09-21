@@ -1,2 +1,3 @@
 #!/bin/bash
-cd build && make && cd ..
+mkdir build
+cd build && cmake .. && make && cd ..

@@ -33,7 +33,7 @@ end
 
 opt = {
 	-- project
-	project_name = os.date("%y-%m-%d_%H%M%S"),
+	project_name = os.date("%y-%m-%d_%H%M%S"), -- important !! the name of run folder, besure not to override a existing one.
 	using_model_file = nil,
 
 	recurrent_unit = "gru",
@@ -48,7 +48,7 @@ opt = {
 	max_param_norm = false,
 
 	-- configurations
-	gpu = false,
+	gpu = false, -- might not help
 
 	-- threading
 	nthread = 3,
@@ -60,12 +60,12 @@ opt = {
 	codec_file = nil,
 	testing_ratio = 1, -- is valid unless testing_list_file == nil
 
-	-- fancy network
-	raw_input = false,
+	-- feature extracting layer
+	raw_input = true, -- disable this layer?
 	windows_size = 10,
 	stride = 5,
-	feature_size = 48 * 5,
-	rbm_network_file =  "rbm/wwr.rbm",
+	feature_size = 48 * 5, -- feature size
+	rbm_network_file =  "rbm/wwr.rbm", -- set if you want to use a pretrained rbm encoder
 
 	-- miscellaneous
 	max_iter = 1e10,
@@ -159,11 +159,14 @@ show_log("Building networks...")
 local net, recurrent
 
 if opt.using_model_file then
+	-- load current network
 	net = torch.load(opt.using_model_file)
 else
 	local rnn_input_size = opt.input_size
 	
 	net = nn.Sequential()
+
+	-- build feature extracting layer
 
 	if (opt.raw_input) then
 		net:add(nn.SplitTable(1))
@@ -171,18 +174,18 @@ else
 		local raw_input_size = opt.windows_size * opt.input_size
 		rnn_input_size = opt.feature_size
 
-		local lienar_layer = nn.Linear(raw_input_size, opt.feature_size)
-
 		if (opt.rbm_network_file) then
 			show_log("loading RBM nerwork...")
 			local rbm = torch.load(opt.rbm_network_file)
 			show_log(string.format("loaded RBM Layer with n_visual=%d, n_hidden=%d.", rbm.n_visible, rbm.n_hidden))
-			linear_layer = rbm.encoder
+			net:add(nn.Sequencer(rbm.encoder))
+		else
+			net:add(nn.Sequencer(nn.Linear(raw_input_size, opt.feature_size)))
 		end
-
-		net:add(nn.Sequencer(linear_layer))
 	end
 	
+
+	-- build RNN layer
 
 	if opt.recurrent_unit == "gru" then
 		recurrent = nn.GRU(rnn_input_size, opt.hidden_size)
@@ -222,6 +225,8 @@ show_log(string.format("Start training. umaru~~"))
 
 begin_time = 0
 
+-- sliding window
+
 get_input = function(im)
 	local input
 	if opt.raw_input then
@@ -238,11 +243,14 @@ end
 
 
 for i = 1, 1000000 do
-	
+	-- epoch begin
+
 	local b1 = timer:time().real
 	
 	local sample
 	
+	-- pick a sample randomly
+
 	if not curriculum_training then
 		sample = loader:pick()
 	else
@@ -253,7 +261,6 @@ for i = 1, 1000000 do
 			show_log("lambda was changed to " .. lambda)
 		end
 	end
-	--print("pick time: " .. timer:time().real - b1)
 
 	local im
 
@@ -263,18 +270,19 @@ for i = 1, 1000000 do
 		im = sample.img
 	end
 
-
+	-- encode target
 	local target = codec:encode(sample.gt)
 
+	-- forward backward
 	local feval = function(params)
 		net:forget()
 
 		local input = get_input(im)
 
-
-
+		-- forward
 		local outputTable = net:forward(input)
 		
+		-- get CTC loss and Gradient
 		local loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
 		
 		if opt.show_every > 0 and i % opt.show_every == 0 then
@@ -286,13 +294,10 @@ for i = 1, 1000000 do
 			show_log("sec/ep  " .. (timer:time().real - begin_time) / i)
 		end
 
-
-
+		-- backward
 		net:backward(input, grad)
 
-		
-
-
+		-- process the gradients (avoiding gradient explosion)
 		grad_params:cmul(grad_params:eq(grad_params):double())
 		grad_params:clamp(-opt.clamp_size, opt.clamp_size)
 
@@ -300,11 +305,11 @@ for i = 1, 1000000 do
 		input = nil
 		sample.img = nil
 
-		
-
 		return loss, grad_params
 	end
 
+
+	-- sgd optimize
 	optim.sgd(feval, params, state)
 
 	if opt.max_param_norm then
