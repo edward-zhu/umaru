@@ -5,10 +5,6 @@ An OCR-system based on torch using the technique of LSTM/GRU-RNN, CTC and referr
 
 This work is now completely UNSTABLE, EXPERIMENTAL and UNDER DEVELOPMENT.
 
-[UPDATE] It finally works.
-
-Nevertheless, it might be a good start if you are new to torch or RNN.
-
 ## Dependencies
 
 - [torch](https://github.com/torch/torch7) (and following packages)
@@ -18,6 +14,7 @@ Nevertheless, it might be a good start if you are new to torch or RNN.
 - [rnn](https://github.com/Element-Research/rnn)
 - [json](https://github.com/clementfarabet/lua---json)
 - [utf8](https://github.com/clementfarabet/lua-utf8)
+- [torchRBM](https://github.com/nhammerla/torchRBM)
 
 ## Build
 
@@ -27,12 +24,16 @@ $ ./build.sh
 
 ## Usage
 
+### General
+
 - You could modify the settings in the `main.lua` directly and execute `th main.lua`, the input format is clstm-like (`.png` and `.gt.txt` pair) and you should put all input file path in a text file.
-- or if you prefer to use a JSON-format configuration file, you could following the example shows below, and run:
+- or if you prefer to use a JSON-format configuration file, you could follow the example below, and run:
 
 ```sh
 $ th main.lua -setting [setting file]
 ```
+
+### Run Folder
 
 There would be a folder created in the `experments` folder for every experiment. You could check out the log, settings and saved models there.
 
