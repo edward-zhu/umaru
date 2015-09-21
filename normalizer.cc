@@ -166,10 +166,14 @@ static void measure(THDoubleTensor * src, double * & center, double & mean, int 
 			sy += dataSrc[i * w + j] * fabs(i - center[j]);
 		}
 	}
-	
+
 	
 	mean = sy / s1;
 	r = int(mean * RANGE_RATE + 1);
+
+	THDoubleTensor_free(minVT);
+	THLongTensor_free(minT);
+	THDoubleTensor_free(smooth);
 	
 	/* printf("mean = %lf r = %d\n", mean, r); */
 }

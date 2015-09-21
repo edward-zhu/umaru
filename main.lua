@@ -223,11 +223,11 @@ show_log(string.format("Start training. umaru~~"))
 begin_time = 0
 
 get_input = function(im)
-	local int
+	local input
 	if opt.raw_input then
 		input = im
 	else
-		slider = Slider()
+		local slider = Slider()
 		slider:load(im:t())
 		input = slider:genSequence()
 
@@ -273,9 +273,9 @@ for i = 1, 1000000 do
 
 
 
-		outputTable = net:forward(input)
+		local outputTable = net:forward(input)
 		
-		loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
+		local loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
 		
 		if opt.show_every > 0 and i % opt.show_every == 0 then
 			print("")
@@ -290,8 +290,16 @@ for i = 1, 1000000 do
 
 		net:backward(input, grad)
 
+		
+
+
 		grad_params:cmul(grad_params:eq(grad_params):double())
 		grad_params:clamp(-opt.clamp_size, opt.clamp_size)
+
+		
+		input = nil
+		sample.img = nil
+
 		
 
 		return loss, grad_params
@@ -301,6 +309,12 @@ for i = 1, 1000000 do
 
 	if opt.max_param_norm then
 		net:maxParamNorm(2)
+	end
+
+	if i % 100 == 0 then
+		show_log("Collecting garbage... before gc " .. collectgarbage("count"))
+		collectgarbage()
+		show_log("GC Finished. after gc " .. collectgarbage("count"))
 	end
 
 	-- model saving
