@@ -232,10 +232,13 @@ get_input = function(im)
 	if opt.raw_input then
 		input = im
 	else
+		if opt.gpu then
+			torch.setdefaulttensortype('torch.CudaTensor')
+		end
 		local slider = Slider()
 		slider:load(im:t())
 		input = slider:genSequence()
-
+		torch.setdefaulttensortype('torch.DoubleTensor')
 	end
 
 	return input
@@ -283,7 +286,7 @@ for i = 1, 1000000 do
 		local outputTable = net:forward(input)
 		
 		-- get CTC loss and Gradient
-		local loss, grad = ctc.getCTCCostAndGrad(outputTable, target)
+		local loss, grad = ctc.getCTCCostAndGrad(outputTable, target, opt.gpu)
 		
 		if opt.show_every > 0 and i % opt.show_every == 0 then
 			print("")
@@ -298,7 +301,11 @@ for i = 1, 1000000 do
 		net:backward(input, grad)
 
 		-- process the gradients (avoiding gradient explosion)
-		grad_params:cmul(grad_params:eq(grad_params):double())
+		if opt.gpu then
+			grad_params:cmul(grad_params:eq(grad_params))
+		else
+			grad_params:cmul(grad_params:eq(grad_params):double())
+		end
 		grad_params:clamp(-opt.clamp_size, opt.clamp_size)
 
 		

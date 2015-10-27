@@ -16,6 +16,7 @@ rbm/*
 *.txt
 *.codec
 !CMakeLists.txt
+!sample_setting.json
 
 .*
 

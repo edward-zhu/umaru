@@ -220,7 +220,7 @@ function ctc.__getCost(fb, target)
 	end
 end
 
-function ctc.getCTCCostAndGrad(outputTable, target)
+function ctc.getCTCCostAndGrad(outputTable, target, gpu)
 	if DEBUG then
 		print("debug")
 		timer = torch.Timer()
@@ -339,7 +339,7 @@ function ctc.getCTCCostAndGrad(outputTable, target)
 	print(grad)
 	]]
 	
-	if GPU_ENABLED then
+	if gpu then
 		grad = grad:cuda()
 	end
 	
